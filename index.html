@@ -588,9 +588,9 @@
 
         // Local Storage Helpers
         function loadState() {
-            const storedGoals = localStorage.getItem('tabungku_family_goals');
-            const storedTxs = localStorage.getItem('tabungku_family_transactions');
-            const storedMortgage = localStorage.getItem('tabungku_family_mortgage');
+            const storedGoals = localStorage.getItem('TabunganKu_family_goals');
+            const storedTxs = localStorage.getItem('TabunganKu_family_transactions');
+            const storedMortgage = localStorage.getItem('TabunganKu_family_mortgage');
 
             goals = storedGoals ? JSON.parse(storedGoals) : defaultGoals;
             transactions = storedTxs ? JSON.parse(storedTxs) : defaultTransactions;
@@ -598,9 +598,9 @@
         }
 
         function saveState() {
-            localStorage.setItem('tabungku_family_goals', JSON.stringify(goals));
-            localStorage.setItem('tabungku_family_transactions', JSON.stringify(transactions));
-            localStorage.setItem('tabungku_family_mortgage', JSON.stringify(mortgageConfig));
+            localStorage.setItem('TabunganKu_family_goals', JSON.stringify(goals));
+            localStorage.setItem('TabunganKu_family_transactions', JSON.stringify(transactions));
+            localStorage.setItem('TabunganKu_family_mortgage', JSON.stringify(mortgageConfig));
             populateYearFilterOptions();
             renderAll();
         }
@@ -1266,9 +1266,9 @@
         function confirmResetData() {
             const confirmAction = confirm('Apakah Anda yakin ingin mereset seluruh data tabungan dan KPR?');
             if (confirmAction) {
-                localStorage.removeItem('tabungku_family_goals');
-                localStorage.removeItem('tabungku_family_transactions');
-                localStorage.removeItem('tabungku_family_mortgage');
+                localStorage.removeItem('TabunganKu_family_goals');
+                localStorage.removeItem('TabunganKu_family_transactions');
+                localStorage.removeItem('TabunganKu_family_mortgage');
                 goals = [];
                 transactions = [];
                 mortgageConfig = defaultMortgage;
@@ -1282,7 +1282,7 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ goals, transactions, mortgageConfig }, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `tabungku_family_kpr_backup_${new Date().toISOString().split('T')[0]}.json`);
+            downloadAnchor.setAttribute("download", `TabunganKu_family_kpr_backup_${new Date().toISOString().split('T')[0]}.json`);
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
