@@ -1358,7 +1358,12 @@ async function saveTransactionToCloud(txData) {
             div.textContent = text;
             return div.innerHTML;
         }
+       // Otomatis tarik data cloud setiap kali HP 2 dibuka / layar di-un-lock
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
         syncDataFromCloud();
+    }
+});
     </script>
 </body>
 </html>
