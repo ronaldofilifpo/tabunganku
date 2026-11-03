@@ -509,6 +509,36 @@
         let selectedYearFilter = 'all';   // 'all' | 2024, 2025, 2026, ...
 
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxpGvglQgOdNCcrEyWP705W78q91eHFea9B9kcyNuvDUk7s754lo7CEQ1qHWAs89kIf/exec';
+        async function syncDataFromCloud() {
+            if (WEB_APP_URL.includes('https://script.google.com/macros/s/AKfycbxpGvglQgOdNCcrEyWP705W78q91eHFea9B9kcyNuvDUk7s754lo7CEQ1qHWAs89kIf/exec')) {
+                console.warn('URL Cloud belum diatur.');
+                return;
+            }
+            try {
+                let response = await fetch(WEB_APP_URL + '?t=' + new Date().getTime());
+                let result = await response.json();
+                if (Array.isArray(result)) {
+                    transactions = result;
+                    initApp();
+                }
+            } catch (error) {
+                console.error('Gagal mengambil data cloud:', error);
+            }
+        }
+
+        async function saveTransactionToCloud(txData) {
+            if (WEB_APP_URL.includes('https://script.google.com/macros/s/AKfycbxpGvglQgOdNCcrEyWP705W78q91eHFea9B9kcyNuvDUk7s754lo7CEQ1qHWAs89kIf/exec')) return;
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(txData)
+                });
+            } catch (error) {
+                console.error('Gagal menyimpan ke cloud:', error);
+            }
+        }
 
         // Default Initial Data
         const defaultMortgage = {
@@ -1321,6 +1351,7 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        syncDataFromCloud();
     </script>
 </body>
 </html>
