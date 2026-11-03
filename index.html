@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TabunganKu</title>
+    <title>TabungKu - Pencatat Tabungan & Keuangan</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -129,7 +129,7 @@
             }
         }
 
-        // Inisialisasi Tampilan Aplikasi
+        // Inisialisasi Tampilan Aplikasi & Simpan ke Memori Lokal HP
         function initApp() {
             const listEl = document.getElementById('transactionList');
             const balanceEl = document.getElementById('totalBalance');
@@ -138,6 +138,9 @@
             listEl.innerHTML = '';
             let total = 0;
             
+            // Simpan ke localStorage agar aman saat refresh
+            localStorage.setItem('tabungku_transactions', JSON.stringify(transactions));
+
             if (!Array.isArray(transactions) || transactions.length === 0) {
                 listEl.innerHTML = `<p class="text-center text-slate-400 py-4 text-sm">Belum ada data transaksi di room ini.</p>`;
                 balanceEl.innerText = 'Rp 0';
@@ -172,7 +175,7 @@
             balanceEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
         }
 
-        // Ambil Data dari Cloud berdasarkan Room ID
+        // Ambil Data dari Cloud & Sinkronkan dengan Memori Lokal
         async function syncDataFromCloud() {
             const roomId = getRoomId();
             if (!WEB_APP_URL || WEB_APP_URL.includes('MASUKKAN_URL')) return;
@@ -181,12 +184,22 @@
                 let response = await fetch(`${WEB_APP_URL}?roomId=${encodeURIComponent(roomId)}&t=${new Date().getTime()}`);
                 let result = await response.json();
 
-                if (Array.isArray(result)) {
+                if (Array.isArray(result) && result.length > 0) {
                     transactions = result;
+                } else {
+                    let localData = localStorage.getItem('tabungku_transactions');
+                    if (localData) {
+                        transactions = JSON.parse(localData);
+                    }
+                }
+                initApp();
+            } catch (error) {
+                console.error('Gagal mengambil data dari cloud, memuat data lokal:', error);
+                let localData = localStorage.getItem('tabungku_transactions');
+                if (localData) {
+                    transactions = JSON.parse(localData);
                     initApp();
                 }
-            } catch (error) {
-                console.error('Gagal mengambil data dari cloud:', error);
             }
         }
 
@@ -236,6 +249,8 @@
             };
 
             transactions.push(newTx);
+            localStorage.setItem('tabungku_transactions', JSON.stringify(transactions));
+            
             initApp();
             saveTransactionToCloud(newTx);
             closeAddModal();
@@ -244,6 +259,11 @@
         // Jalankan saat halaman dimuat pertama kali
         document.addEventListener('DOMContentLoaded', () => {
             getRoomId();
+            let localData = localStorage.getItem('tabungku_transactions');
+            if (localData) {
+                transactions = JSON.parse(localData);
+                initApp();
+            }
             syncDataFromCloud();
         });
 
