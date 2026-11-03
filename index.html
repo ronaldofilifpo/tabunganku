@@ -1,603 +1,424 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TabunganKita - Real-Time Savings Tracker</title>
-
-    <!-- Tailwind CSS CDN -->
+    <title>TabunganKita - Realtime Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
-                            900: '#064e3b',
-                        }
+                        darkBg: '#0f172a',
+                        cardBg: '#1e293b',
+                        accent: '#3b82f6'
                     }
                 }
             }
         }
     </script>
-
-    <!-- Font Awesome Icons CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        /* Custom scrollbar for mobile feel */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex justify-center selection:bg-emerald-500 selection:text-white">
+<body class="bg-darkBg text-slate-100 min-h-screen font-sans pb-12">
 
-    <!-- Mobile Container (Max Width App View) -->
-    <div class="w-full max-w-md bg-slate-900 min-h-screen shadow-2xl flex flex-col relative border-x border-slate-800/60 pb-20">
-
-        <!-- Top Header Navigation -->
-        <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <i class="fa-solid fa-wallet text-slate-950 font-bold text-lg"></i>
+    <!-- Header / Navbar -->
+    <header class="bg-cardBg border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="bg-blue-600 text-white p-2 rounded-xl shadow-lg">
+                    <i class="fa-solid fa-wallet text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
-                        TabunganKita
-                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">SYNC</span>
-                    </h1>
-                    <p class="text-[11px] text-slate-400">Pencatatan Keuangan Real-Time</p>
+                    <h1 class="font-bold text-lg tracking-tight">TabunganKita</h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1">
+                        <span id="sync-status" class="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse"></span>
+                        <span id="sync-text">Menghubungkan...</span>
+                    </p>
                 </div>
             </div>
-
-            <!-- Sync Room Button -->
-            <button onclick="openSyncModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 flex items-center space-x-2 transition text-xs font-medium text-slate-300">
-                <i class="fa-solid fa-arrows-rotate text-emerald-400 text-xs"></i>
-                <span id="room-code-label" class="font-mono text-emerald-300 font-bold">...</span>
+            <button onclick="openRoomModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-key text-blue-400"></i>
+                <span id="current-room-badge" class="font-semibold text-blue-300">Room: ...</span>
             </button>
-        </header>
+        </div>
+    </header>
 
-        <!-- Main Body Content -->
-        <main class="p-4 space-y-5 flex-1 overflow-y-auto">
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto px-4 py-5 space-y-5">
 
-            <!-- Pocket / Wallet Badges Selector (Horizontal Scroll) -->
-            <section class="space-y-2">
-                <div class="flex justify-between items-center px-1">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pilih Kantong Tabungan</span>
-                    <button onclick="openAddPocketModal()" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
-                        <i class="fa-solid fa-plus text-[10px]"></i> Tambah
-                    </button>
+        <!-- Info Card: Total Saldo Utama -->
+        <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 opacity-10 text-9xl">
+                <i class="fa-solid fa-vault"></i>
+            </div>
+            <p class="text-blue-100 text-sm font-medium">Total Saldo Utama (Tabungan + Emas)</p>
+            <h2 id="total-saldo-utama" class="text-3xl font-extrabold tracking-tight mt-1">Rp 0</h2>
+            <div class="mt-4 pt-3 border-t border-blue-500/30 flex justify-between text-xs text-blue-100">
+                <span>Tabungan Anak & Rumah Terpisah</span>
+                <span id="active-room-display" class="font-mono bg-blue-800/50 px-2 py-0.5 rounded">...</span>
+            </div>
+        </div>
+
+        <!-- Filter / Kategori Akun / Pos -->
+        <div class="bg-cardBg rounded-2xl p-4 border border-slate-800 shadow-sm space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-semibold text-slate-300"><i class="fa-solid fa-layer-group text-blue-400 mr-2"></i>Pilih Dompet / Pos</h3>
+                <button onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition shadow flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i> Transaksi Baru
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2" id="wallet-summary-cards">
+                <!-- Dynamic Wallet Summary Cards -->
+            </div>
+        </div>
+
+        <!-- Detail Pos Khusus (Rumah / Emas jika aktif) -->
+        <div id="special-pos-container" class="space-y-4">
+            <!-- Render khusus Rumah atau Emas Antam -->
+        </div>
+
+        <!-- Riwayat Transaksi -->
+        <div class="bg-cardBg rounded-2xl p-4 border border-slate-800 shadow-sm space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-semibold text-slate-300"><i class="fa-solid fa-clock-rotate-left text-blue-400 mr-2"></i>Riwayat Transaksi</h3>
+                <span id="tx-count" class="text-xs text-slate-400">0 Transaksi</span>
+            </div>
+            <div class="divide-y divide-slate-800 max-h-72 overflow-y-auto pr-1 space-y-2" id="transaction-list">
+                <div class="text-center py-6 text-slate-500 text-sm">Belum ada transaksi tercatat.</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Transaksi Baru -->
+    <div id="addModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-cardBg w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 border border-slate-800 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-base text-slate-100">Tambah Catatan / Transaksi</h3>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="tx-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Pilih Pos Tabungan</label>
+                    <select id="form-wallet" onchange="onWalletChange()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                        <option value="utama">Tabungan Utama</option>
+                        <option value="anak">Tabungan Anak (Terpisah)</option>
+                        <option value="rumah">Cicilan Rumah</option>
+                        <option value="emas">Tabungan Emas Antam</option>
+                    </select>
                 </div>
-                <div id="pocket-tabs" class="flex space-x-2 overflow-x-auto pb-1 scrollbar-none">
-                    <!-- Dynamic rendering of wallets -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Jenis Transaksi</label>
+                    <select id="form-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                        <option value="masuk">Pemasukan / Setoran (+)</option>
+                        <option value="keluar">Pengeluaran / Penarikan (-)</option>
+                    </select>
                 </div>
-            </section>
-
-            <!-- Card Summary Main Balance -->
-            <section class="relative overflow-hidden rounded-3xl p-6 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white shadow-xl shadow-emerald-950/40">
-                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
-                <div class="absolute -left-6 -top-6 w-32 h-32 bg-emerald-400/20 rounded-full blur-lg pointer-events-none"></div>
-
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span id="pocket-active-name" class="text-xs text-emerald-100 font-bold tracking-wide uppercase bg-white/15 px-2 py-0.5 rounded-md">Tabungan Utama</span>
-                            <span class="text-[10px] text-emerald-200/80">(Terpisah)</span>
-                        </div>
-                        <h2 id="total-balance" class="text-3xl font-extrabold tracking-tight mt-2">Rp 0</h2>
-                    </div>
-                    <span class="px-2.5 py-1 bg-white/20 backdrop-blur-md text-[10px] uppercase font-bold tracking-wider rounded-lg border border-white/20">
-                        Real-Time
-                    </span>
+                <div id="amount-field-container">
+                    <label id="amount-label" class="block text-xs font-medium text-slate-400 mb-1">Nominal (Rp)</label>
+                    <input type="number" id="form-amount" placeholder="Contoh: 500000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" required>
                 </div>
-
-                <!-- Income / Outcome Stats Row -->
-                <div class="grid grid-cols-2 gap-3 pt-3 border-t border-white/20 mt-4">
-                    <div class="flex items-center space-x-2.5">
-                        <div class="w-8 h-8 rounded-full bg-emerald-400/20 flex items-center justify-center text-emerald-200">
-                            <i class="fa-solid fa-arrow-down text-xs"></i>
-                        </div>
-                        <div>
-                            <p id="label-stat-income" class="text-[10px] text-emerald-100 font-medium">Total Masuk</p>
-                            <p id="total-income" class="text-sm font-semibold">Rp 0</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-2.5">
-                        <div class="w-8 h-8 rounded-full bg-rose-400/20 flex items-center justify-center text-rose-200">
-                            <i id="icon-stat-expense" class="fa-solid fa-arrow-up text-xs"></i>
-                        </div>
-                        <div>
-                            <p id="label-stat-expense" class="text-[10px] text-emerald-100 font-medium">Total Keluar</p>
-                            <p id="total-expense" class="text-sm font-semibold">Rp 0</p>
-                        </div>
-                    </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Keterangan / Catatan</label>
+                    <input type="text" id="form-desc" placeholder="Contoh: Tabungan bulanan / Beli emas 5 gram" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" required>
                 </div>
-            </section>
-
-            <!-- Special Gold Summary Widget (Visible when 'gold' pocket is active) -->
-            <section id="gold-summary-widget" class="hidden bg-slate-800/90 border border-amber-500/40 rounded-2xl p-4 shadow-lg space-y-3">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-coins text-amber-400"></i>
-                        <h3 class="font-bold text-sm text-amber-300">Live Harga Emas Antam</h3>
-                    </div>
-                    <button onclick="fetchLatestGoldPrice()" class="text-xs text-amber-400 hover:underline font-medium flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">
-                        <i class="fa-solid fa-rotate text-[10px]"></i> Refresh Harga
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
-                        <p class="text-slate-400 text-[10px]">Harga Beli Pasar / Gr</p>
-                        <p id="gold-price-buy" class="font-bold text-amber-300 text-sm mt-0.5">Rp 2.541.000</p>
-                    </div>
-                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
-                        <p class="text-slate-400 text-[10px]">Harga Buyback / Gr</p>
-                        <p id="gold-price-sell" class="font-bold text-emerald-400 text-sm mt-0.5">Rp 2.311.000</p>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/90 p-3 rounded-xl border border-amber-500/30 flex justify-between items-center text-xs">
-                    <div>
-                        <p class="text-slate-400 text-[11px]">Nilai Kas Pencairan (Buyback)</p>
-                        <p id="gold-total-buyback-val" class="font-extrabold text-emerald-400 text-base">Rp 0</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] text-slate-500">Terakhir Diperbarui</p>
-                        <p id="gold-updated-time" class="text-[11px] text-slate-300 font-mono">Hari ini</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Special House Installment Widget (Visible when 'house' pocket is active) -->
-            <section id="house-summary-widget" class="hidden bg-slate-800/90 border border-amber-500/30 rounded-2xl p-4 shadow-lg space-y-3 relative overflow-hidden">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-house-chimney text-amber-400 text-sm"></i>
-                        <h3 class="font-bold text-sm text-slate-200">Kalkulasi Cicilan Rumah</h3>
-                    </div>
-                    <button onclick="openSetHousePriceModal()" class="text-xs text-amber-400 hover:underline font-medium bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
-                        Set Harga Rumah
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
-                        <p class="text-slate-400 text-[10px]">Harga Total Rumah</p>
-                        <p id="house-total-price" class="font-bold text-slate-200 text-sm mt-0.5">Rp 0</p>
-                    </div>
-                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
-                        <p class="text-slate-400 text-[10px]">Sisa Belum Dibayar</p>
-                        <p id="house-remaining-price" class="font-bold text-amber-400 text-sm mt-0.5">Rp 0</p>
-                    </div>
-                </div>
-
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs text-slate-400 font-medium">
-                        <span>Progress Pelunasan</span>
-                        <span id="house-progress-percent" class="text-amber-400 font-bold">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
-                        <div id="house-progress-bar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Target / Impian Tabungan Widget (Default Pockets) -->
-            <section id="default-target-widget" class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-3">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-bullseye text-emerald-400 text-sm"></i>
-                        <h3 class="font-bold text-sm text-slate-200">Target / Target Impian</h3>
-                    </div>
-                    <button onclick="openSetTargetModal()" class="text-xs text-emerald-400 hover:underline font-medium">
-                        Atur Target
-                    </button>
-                </div>
-
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs text-slate-400">
-                        <span id="target-title-display" class="font-medium">Target Belum Diatur</span>
-                        <span id="target-progress-text" class="font-bold text-emerald-400">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700/60">
-                        <div id="target-progress-bar" class="bg-gradient-to-r from-teal-400 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Action Buttons: Add Transaction -->
-            <button onclick="openAddModal()" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition">
-                <i class="fa-solid fa-plus-circle text-base"></i>
-                <span id="btn-add-label">Tambah Transaksi Baru</span>
-            </button>
-
-            <!-- Transaction History Section -->
-            <section class="space-y-3">
-                <div class="flex justify-between items-center px-1">
-                    <h3 class="font-bold text-sm text-slate-200">Riwayat Transaksi</h3>
-                    <span id="pocket-label-history" class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">Tabungan Utama</span>
-                </div>
-
-                <div id="transaction-list" class="space-y-2.5">
-                    <!-- Dynamic List of Transactions -->
-                    <div class="bg-slate-800/40 border border-dashed border-slate-700 rounded-2xl p-6 text-center text-slate-400 space-y-2">
-                        <i class="fa-solid fa-folder-open text-3xl text-slate-600"></i>
-                        <p class="text-xs font-medium">Memuat data transaksi...</p>
-                    </div>
-                </div>
-            </section>
-
-        </main>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl text-sm shadow-lg transition mt-2">Simpan Transaksi</button>
+            </form>
+        </div>
     </div>
 
-    <!-- Firebase App & Firestore Modular SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { 
-            getFirestore, collection, doc, onSnapshot, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    <!-- Modal Pengaturan Room Sync -->
+    <div id="roomModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg w-full max-w-sm rounded-2xl p-5 border border-slate-800 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-base text-slate-100">Pengaturan Room Sync</h3>
+                <button onclick="closeRoomModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Masukkan Kode Room yang sama persis di HP pertama dan HP kedua Anda agar data tersinkronisasi secara real-time.
+            </p>
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Kode Room Unik</label>
+                <input type="text" id="input-room-code" placeholder="Contoh: KeluargaBahagia123" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 uppercase tracking-widest font-mono focus:outline-none focus:border-blue-500">
+            </div>
+            <button onclick="saveRoomCode()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl text-sm shadow-lg transition">Hubungkan Room</button>
+        </div>
+    </div>
 
-        // Demo Public Firebase Configuration
+    <!-- Script Utama (Firebase + Local Storage + Auto Gold Price Sync) -->
+    <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyD-demo-key-tabungankita",
-            authDomain: "tabungankita-demo.firebaseapp.com",
-            projectId: "tabungankita-demo",
-            storageBucket: "tabungankita-demo.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef123456"
+            apiKey: "AIzaSyBw-DemoKeyForTabunganAppSyncRealtime2026",
+            authDomain: "tabungan-kita-sync.firebaseapp.com",
+            projectId: "tabungan-kita-sync"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        // Global State variables
-        let currentUser = null;
-        let currentRoomCode = getSavedRoomCode() || "TABUNGAN-UTAMA";
-        let activePocketId = 'main';
-        let pockets = [
-            { id: 'main', name: 'Tabungan Utama', icon: 'fa-piggy-bank' },
-            { id: 'child', name: 'Tabungan Anak', icon: 'fa-child' },
-            { id: 'house', name: 'Cicilan Rumah', icon: 'fa-house-chimney' },
-            { id: 'gold', name: 'Emas Antam', icon: 'fa-coins' }
-        ];
-        let transactions = [];
-        let targets = {};
-        let houseMeta = { price: 0 };
-        let goldPriceData = { buyPrice: 2541000, buybackPrice: 2311000, lastUpdated: 'Hari ini' };
-        let unsubscribeTxListener = null;
-
-        // Utility: Format currency to IDR
-        function formatRp(val) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
+        const db = firebase.firestore();
+        firebase.auth().signInAnonymously().catch(err => console.error(err));
 
-        // Room LocalStorage Persistence
-        function getSavedRoomCode() {
-            return localStorage.getItem('tabungankita_room');
-        }
-        function saveRoomCode(code) {
-            localStorage.setItem('tabungankita_room', code);
-        }
+        let currentRoom = localStorage.getItem('tabungan_room_code') || 'KELUARGA-UTAMA-2026';
+        let unsubscribe = null;
+        let globalData = {
+            transactions: [],
+            housePrice: 500000000,
+            goldGrams: 0
+        };
 
-        // Initialize Firebase Auth Anonymous login
-        signInAnonymously(auth).catch(err => console.log("Auth Anonymous Note:", err));
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                initRoomListener(currentRoomCode);
-            }
+        let goldPricePerGram = 2541000;
+        let goldBuybackPerGram = 2311000;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('input-room-code').value = currentRoom;
+            document.getElementById('current-room-badge').innerText = `Room: ${currentRoom}`;
+            document.getElementById('active-room-display').innerText = currentRoom;
+            initRealtimeSync(currentRoom);
         });
 
-        // Initialize Real-time Firestore Listener
-        function initRoomListener(roomCode) {
-            currentRoomCode = roomCode;
-            document.getElementById('room-code-label').innerText = roomCode;
-            saveRoomCode(roomCode);
+        function initRealtimeSync(room) {
+            const statusEl = document.getElementById('sync-status');
+            const textEl = document.getElementById('sync-text');
+            
+            statusEl.className = "w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse";
+            textEl.innerText = "Menghubungkan...";
 
-            if (unsubscribeTxListener) unsubscribeTxListener();
+            if (unsubscribe) unsubscribe();
 
-            const txRef = collection(db, "rooms", roomCode, "transactions");
-            const q = query(txRef, orderBy("createdAt", "desc"));
-
-            unsubscribeTxListener = onSnapshot(q, (snapshot) => {
-                transactions = [];
-                snapshot.forEach((docSnap) => {
-                    transactions.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                renderDashboard();
+            const docRef = db.collection('rooms').doc(room);
+            
+            unsubscribe = docRef.onSnapshot((doc) => {
+                statusEl.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
+                textEl.innerText = "Sinkron Real-time Aktif";
+                
+                if (doc.exists) {
+                    const data = doc.data();
+                    globalData.transactions = data.transactions || [];
+                    globalData.housePrice = data.housePrice || 500000000;
+                    globalData.goldGrams = data.goldGrams || 0;
+                } else {
+                    docRef.set({ transactions: [], housePrice: 500000000, goldGrams: 0 });
+                    globalData = { transactions: [], housePrice: 500000000, goldGrams: 0 };
+                }
+                renderUI();
             }, (error) => {
-                console.warn("Firestore Demo Mode / Local Fallback:", error.message);
-                loadLocalDemoData();
+                statusEl.className = "w-2 h-2 rounded-full bg-rose-500 inline-block";
+                textEl.innerText = "Mode Offline";
+                console.error("Firestore error:", error);
             });
         }
 
-        // Fallback for Demo usage
-        function loadLocalDemoData() {
-            const localData = localStorage.getItem(`tx_${currentRoomCode}`);
-            transactions = localData ? JSON.parse(localData) : [];
-            renderDashboard();
+        function syncToServer() {
+            db.collection('rooms').doc(currentRoom).set({
+                transactions: globalData.transactions,
+                housePrice: globalData.housePrice,
+                goldGrams: globalData.goldGrams
+            }).catch(err => console.error("Gagal sinkron:", err));
         }
 
-        function saveLocalDemoData() {
-            localStorage.setItem(`tx_${currentRoomCode}`, JSON.stringify(transactions));
-            renderDashboard();
+        function saveRoomCode() {
+            const val = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (!val) return alert('Masukkan kode room yang valid!');
+            
+            currentRoom = val;
+            localStorage.setItem('tabungan_room_code', currentRoom);
+            
+            document.getElementById('current-room-badge').innerText = `Room: ${currentRoom}`;
+            document.getElementById('active-room-display').innerText = currentRoom;
+            
+            closeRoomModal();
+            initRealtimeSync(currentRoom);
         }
 
-        // Switching Pockets
-        window.switchPocket = function(pocketId) {
-            activePocketId = pocketId;
-            renderPocketTabs();
-            renderDashboard();
-        };
+        function renderUI() {
+            let saldoUtama = 0;
+            let saldoAnak = 0;
+            let totalCicilanRumahDibayar = 0;
+            let totalEmasGram = globalData.goldGrams || 0;
 
-        // Render Pocket Selector Badges
-        function renderPocketTabs() {
-            const container = document.getElementById('pocket-tabs');
-            container.innerHTML = pockets.map(pocket => {
-                const isActive = pocket.id === activePocketId;
-                return `
-                    <button onclick="switchPocket('${pocket.id}')" class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all ${
-                        isActive 
-                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border border-emerald-400' 
-                        : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/70'
-                    }">
-                        <i class="fa-solid ${pocket.icon || 'fa-wallet'}"></i>
-                        <span>${escapeHtml(pocket.name)}</span>
-                    </button>
-                `;
-            }).join('');
-
-            const activePocketObj = pockets.find(p => p.id === activePocketId) || pockets[0];
-            document.getElementById('pocket-active-name').innerText = activePocketObj.name;
-            document.getElementById('pocket-label-history').innerText = activePocketObj.name;
-            document.getElementById('btn-add-label').innerText = `Tambah ke ${activePocketObj.name}`;
-
-            document.getElementById('house-summary-widget').classList.add('hidden');
-            document.getElementById('gold-summary-widget').classList.add('hidden');
-            document.getElementById('default-target-widget').classList.add('hidden');
-
-            if (activePocketId === 'house') {
-                document.getElementById('label-stat-income').innerText = 'Sudah Dibayar (Setoran)';
-                document.getElementById('label-stat-expense').innerText = 'Pengeluaran/Lainnya';
-                document.getElementById('house-summary-widget').classList.remove('hidden');
-            } else if (activePocketId === 'gold') {
-                document.getElementById('label-stat-income').innerText = 'Total Fisik Emas';
-                document.getElementById('label-stat-expense').innerText = 'Pengurangan (Gram)';
-                document.getElementById('gold-summary-widget').classList.remove('hidden');
-                document.getElementById('default-target-widget').classList.remove('hidden');
-                fetchLatestGoldPrice();
-            } else {
-                document.getElementById('label-stat-income').innerText = 'Total Masuk';
-                document.getElementById('label-stat-expense').innerText = 'Total Keluar';
-                document.getElementById('default-target-widget').classList.remove('hidden');
-            }
-        }
-
-        // Render Dashboard UI filtered by active pocket ONLY
-        function renderDashboard() {
-            const filteredTx = transactions.filter(t => (t.pocketId || 'main') === activePocketId);
-
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            const listContainer = document.getElementById('transaction-list');
-
-            if (filteredTx.length === 0) {
-                const activePocketObj = pockets.find(p => p.id === activePocketId);
-                listContainer.innerHTML = `
-                    <div class="bg-slate-800/40 border border-dashed border-slate-700 rounded-2xl p-6 text-center text-slate-400 space-y-2">
-                        <i class="fa-solid fa-folder-open text-3xl text-slate-600"></i>
-                        <p class="text-xs font-medium">Belum ada transaksi di "${escapeHtml(activePocketObj?.name)}".</p>
-                        <p class="text-[11px] text-slate-500">Saldo pos ini dipisahkan & tidak digabung dengan pos lain.</p>
-                    </div>
-                `;
-            } else {
-                listContainer.innerHTML = filteredTx.map(item => {
-                    const amountNum = parseFloat(item.amount) || 0;
-                    const isIncome = item.type === 'income';
-
-                    if (isIncome) totalIncome += amountNum;
-                    else totalExpense += amountNum;
-
-                    const formattedDate = item.date ? new Date(item.date).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                    }) : '-';
-
-                    let typeLabel = isIncome ? 'Masuk' : 'Keluar';
-                    let amountDisplay = formatRp(amountNum);
-
-                    if (activePocketId === 'house') {
-                        typeLabel = isIncome ? 'Setoran Cicilan' : 'Pengeluaran';
-                    } else if (activePocketId === 'gold') {
-                        typeLabel = isIncome ? 'Tambah Emas' : 'Jual/Kurang Emas';
-                        amountDisplay = `${amountNum} Gram`;
-                    }
-
-                    return `
-                        <div class="bg-slate-800/80 border border-slate-700/60 hover:border-slate-600 rounded-2xl p-3.5 flex items-center justify-between transition">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-xl ${isIncome ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'} flex items-center justify-center">
-                                    <i class="fa-solid ${isIncome ? 'fa-arrow-down' : 'fa-arrow-up'} text-sm"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-semibold text-xs text-slate-200 line-clamp-1">${escapeHtml(item.note)}</h4>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">${formattedDate}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <div class="text-right">
-                                    <p class="font-bold text-xs ${isIncome ? 'text-emerald-400' : 'text-rose-400'}">
-                                        ${isIncome ? '+' : '-'} ${amountDisplay}
-                                    </p>
-                                    <p class="text-[9px] uppercase tracking-wider ${isIncome ? 'text-emerald-500/80' : 'text-rose-500/80'} font-semibold">
-                                        ${typeLabel}
-                                    </p>
-                                </div>
-                                <button onclick="deleteTx('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition" title="Hapus">
-                                    <i class="fa-solid fa-trash-can text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            if (activePocketId === 'gold') {
-                const totalGrams = totalIncome - totalExpense;
-                const buybackVal = totalGrams * goldPriceData.buybackPrice;
-
-                document.getElementById('total-balance').innerText = `${totalGrams} Gram`;
-                document.getElementById('total-income').innerText = `${totalIncome} Gr`;
-                document.getElementById('total-expense').innerText = `${totalExpense} Gr`;
-                document.getElementById('gold-total-buyback-val').innerText = formatRp(buybackVal);
-
-                renderTargetUI(totalGrams * goldPriceData.buyPrice);
-            } else {
-                const netBalance = totalIncome - totalExpense;
-                document.getElementById('total-balance').innerText = formatRp(netBalance);
-                document.getElementById('total-income').innerText = formatRp(totalIncome);
-                document.getElementById('total-expense').innerText = formatRp(totalExpense);
-
-                if (activePocketId === 'house') {
-                    renderHouseWidget(totalIncome);
-                } else {
-                    renderTargetUI(netBalance);
+            globalData.transactions.forEach(tx => {
+                const nominal = Number(tx.amount);
+                if (tx.wallet === 'utama') {
+                    if (tx.type === 'masuk') saldoUtama += nominal;
+                    else saldoUtama -= nominal;
+                } else if (tx.wallet === 'anak') {
+                    if (tx.type === 'masuk') saldoAnak += nominal;
+                    else saldoAnak -= nominal;
+                } else if (tx.wallet === 'rumah') {
+                    if (tx.type === 'masuk') totalCicilanRumahDibayar += nominal;
+                    else totalCicilanRumahDibayar -= nominal;
+                } else if (tx.wallet === 'emas') {
+                    if (tx.type === 'masuk') totalEmasGram += Number(tx.grams || 0);
+                    else totalEmasGram -= Number(tx.grams || 0);
                 }
-            }
-        }
+            });
 
-        // Render House Installment Widget
-        function renderHouseWidget(totalPaid) {
-            const hp = houseMeta.price || 500000000; 
-            const remaining = Math.max(0, hp - totalPaid);
-            const progress = hp > 0 ? Math.min(100, Math.round((totalPaid / hp) * 100)) : 0;
+            globalData.goldGrams = totalEmasGram;
+            const nilaiRupiahEmasBeli = totalEmasGram * goldPricePerGram;
+            const nilaiRupiahEmasBuyback = totalEmasGram * goldBuybackPerGram;
 
-            document.getElementById('house-total-price').innerText = formatRp(hp);
-            document.getElementById('house-remaining-price').innerText = formatRp(remaining);
-            document.getElementById('house-progress-percent').innerText = `${progress}%`;
-            document.getElementById('house-progress-bar').style.width = `${progress}%`;
-        }
+            const totalKeseluruhanUtama = saldoUtama + nilaiRupiahEmasBeli;
+            document.getElementById('total-saldo-utama').innerText = formatRupiah(totalKeseluruhanUtama);
 
-        // Render Target Progress Bar
-        function renderTargetUI(currentVal) {
-            const targetObj = targets[activePocketId] || { title: '', amount: 0 };
-            const titleEl = document.getElementById('target-title-display');
-            const percentEl = document.getElementById('target-progress-text');
-            const barEl = document.getElementById('target-progress-bar');
+            const walletCardsEl = document.getElementById('wallet-summary-cards');
+            walletCardsEl.innerHTML = `
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[11px] text-slate-400 font-medium">Tabungan Utama</p>
+                    <p class="text-base font-bold text-emerald-400 mt-0.5">${formatRupiah(saldoUtama)}</p>
+                </div>
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[11px] text-slate-400 font-medium">Tabungan Anak (Terpisah)</p>
+                    <p class="text-base font-bold text-blue-400 mt-0.5">${formatRupiah(saldoAnak)}</p>
+                </div>
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[11px] text-slate-400 font-medium">Cicilan Rumah</p>
+                    <p class="text-base font-bold text-amber-400 mt-0.5">${formatRupiah(totalCicilanRumahDibayar)}</p>
+                </div>
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[11px] text-slate-400 font-medium">Emas Antam (${totalEmasGram} gr)</p>
+                    <p class="text-base font-bold text-yellow-400 mt-0.5">${formatRupiah(nilaiRupiahEmasBeli)}</p>
+                </div>
+            `;
 
-            if (!targetObj.amount || targetObj.amount <= 0) {
-                titleEl.innerText = "Belum Ada Target";
-                percentEl.innerText = "0%";
-                barEl.style.width = "0%";
+            renderSpecialPos(totalCicilanRumahDibayar, totalEmasGram, nilaiRupiahEmasBeli, nilaiRupiahEmasBuyback);
+
+            const txListEl = document.getElementById('transaction-list');
+            document.getElementById('tx-count').innerText = `${globalData.transactions.length} Transaksi`;
+
+            if (globalData.transactions.length === 0) {
+                txListEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-sm">Belum ada transaksi tercatat.</div>`;
             } else {
-                const pct = Math.min(100, Math.round((currentVal / targetObj.amount) * 100));
-                titleEl.innerText = targetObj.title || "Target Impian";
-                percentEl.innerText = `${pct}% (${formatRp(currentVal)} / ${formatRp(targetObj.amount)})`;
-                barEl.style.width = `${pct}%`;
+                txListEl.innerHTML = globalData.transactions.map((tx, idx) => `
+                    <div class="flex justify-between items-center py-2 text-sm">
+                        <div class="space-y-0.5">
+                            <p class="font-medium text-slate-200">${tx.desc}</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">${formatWalletName(tx.wallet)} • ${tx.date}</p>
+                        </div>
+                        <div class="text-right flex items-center gap-3">
+                            <span class="font-semibold ${tx.type === 'masuk' ? 'text-emerald-400' : 'text-rose-400'}">
+                                ${tx.type === 'masuk' ? '+' : '-'} ${tx.wallet === 'emas' ? tx.grams + ' gr' : formatRupiah(tx.amount)}
+                            </span>
+                            <button onclick="deleteTx(${idx})" class="text-slate-600 hover:text-rose-400 text-xs transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `).join('');
             }
         }
 
-        // Fetch Live Gold Price
-        window.fetchLatestGoldPrice = async function() {
-            goldPriceData = {
-                buyPrice: 2541000,
-                buybackPrice: 2311000,
-                lastUpdated: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-            };
+        function renderSpecialPos(bayarRumah, gramEmas, nilaiBeliEmas, nilaiBuybackEmas) {
+            const container = document.getElementById('special-pos-container');
+            const hargaRumah = globalData.housePrice || 500000000;
+            const sisaRumah = Math.max(0, hargaRumah - bayarRumah);
+            const persenRumah = Math.min(100, Math.round((bayarRumah / hargaRumah) * 100));
 
-            document.getElementById('gold-price-buy').innerText = formatRp(goldPriceData.buyPrice);
-            document.getElementById('gold-price-sell').innerText = formatRp(goldPriceData.buybackPrice);
-            document.getElementById('gold-updated-time').innerText = goldPriceData.lastUpdated;
+            container.innerHTML = `
+                <div class="bg-cardBg rounded-2xl p-4 border border-slate-800 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-semibold text-slate-300"><i class="fa-solid fa-house-chimney text-amber-400 mr-2"></i>Status Cicilan Rumah</h3>
+                        <span class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">${persenRumah}% Lunas</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-amber-500 h-2.5 rounded-full transition-all duration-500" style="width: ${persenRumah}%"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl">
+                            <span class="text-slate-400 block text-[10px]">Sudah Dibayar</span>
+                            <span class="font-bold text-emerald-400 text-sm">${formatRupiah(bayarRumah)}</span>
+                        </div>
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl">
+                            <span class="text-slate-400 block text-[10px]">Sisa Belum Lunas</span>
+                            <span class="font-bold text-rose-400 text-sm">${formatRupiah(sisaRumah)}</span>
+                        </div>
+                    </div>
+                </div>
 
-            renderDashboard();
-        };
-
-        // Actions: Add Transaction
-        window.openAddModal = function() {
-            const amountStr = prompt(activePocketId === 'gold' ? "Masukkan Gram Emas (Contoh: 5):" : "Masukkan Jumlah (Rp):");
-            if (!amountStr) return;
-            const note = prompt("Catatan / Keterangan (Contoh: Setoran Bulanan):") || "Setoran";
-
-            const amount = parseFloat(amountStr);
-            if (isNaN(amount) || amount <= 0) return alert("Jumlah tidak valid!");
-
-            const newTx = {
-                pocketId: activePocketId,
-                type: 'income',
-                amount: amount,
-                note: note,
-                date: new Date().toISOString(),
-                createdAt: new Date().getTime()
-            };
-
-            try {
-                addDoc(collection(db, "rooms", currentRoomCode, "transactions"), newTx);
-            } catch (e) {
-                transactions.unshift({ id: Date.now().toString(), ...newTx });
-                saveLocalDemoData();
-            }
-        };
-
-        // Actions: Delete Transaction
-        window.deleteTx = function(id) {
-            if (!confirm("Hapus catatan transaksi ini?")) return;
-            try {
-                deleteDoc(doc(db, "rooms", currentRoomCode, "transactions", id));
-            } catch (e) {
-                transactions = transactions.filter(t => t.id !== id);
-                saveLocalDemoData();
-            }
-        };
-
-        // Actions: Change Room Sync Code
-        window.openSyncModal = function() {
-            const newCode = prompt("Masukkan Kode Room Sync (Harus sama di HP ke-2):", currentRoomCode);
-            if (newCode && newCode.trim() !== '') {
-                initRoomListener(newCode.trim().toUpperCase());
-            }
-        };
-
-        // Actions: Set House Total Price
-        window.openSetHousePriceModal = function() {
-            const val = prompt("Masukkan Total Harga Rumah (Rp):", houseMeta.price || 500000000);
-            if (val) {
-                houseMeta.price = parseFloat(val) || 0;
-                renderDashboard();
-            }
-        };
-
-        // Actions: Set Target Goal
-        window.openSetTargetModal = function() {
-            const title = prompt("Nama Target (misal: Beli Laptop / Tabungan Umroh):", targets[activePocketId]?.title || "");
-            const amount = prompt("Nominal Target (Rp):", targets[activePocketId]?.amount || "");
-            if (amount) {
-                targets[activePocketId] = { title, amount: parseFloat(amount) || 0 };
-                renderDashboard();
-            }
-        };
-
-        // Utility: HTML Escaper
-        function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                <div class="bg-cardBg rounded-2xl p-4 border border-slate-800 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-semibold text-slate-300"><i class="fa-solid fa-coins text-yellow-400 mr-2"></i>Tabungan Emas Antam</h3>
+                        <span class="text-[10px] text-slate-400"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>Live Price</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-xl space-y-2">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Total Kepemilikan Fisik:</span>
+                            <span class="font-bold text-yellow-400">${gramEmas} Gram</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Estimasi Nilai Pasar (Beli):</span>
+                            <span class="font-semibold text-slate-200">${formatRupiah(nilaiBeliEmas)}</span>
+                        </div>
+                        <div class="flex justify-between text-xs border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">Estimasi Cair (Buyback):</span>
+                            <span class="font-semibold text-emerald-400">${formatRupiah(nilaiBuybackEmas)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        // Initial Load
-        renderPocketTabs();
-        initRoomListener(currentRoomCode);
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const wallet = document.getElementById('form-wallet').value;
+            const type = document.getElementById('form-type').value;
+            const desc = document.getElementById('form-desc').value;
+            const rawAmount = document.getElementById('form-amount').value;
+
+            let newTx = {
+                wallet,
+                type,
+                desc,
+                amount: wallet === 'emas' ? Number(rawAmount) * goldPricePerGram : Number(rawAmount),
+                grams: wallet === 'emas' ? Number(rawAmount) : 0,
+                date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            };
+
+            globalData.transactions.unshift(newTx);
+            syncToServer();
+            closeAddModal();
+            document.getElementById('tx-form').reset();
+        }
+
+        function deleteTx(index) {
+            if (confirm('Hapus catatan transaksi ini?')) {
+                globalData.transactions.splice(index, 1);
+                syncToServer();
+            }
+        }
+
+        function onWalletChange() {
+            const wallet = document.getElementById('form-wallet').value;
+            const labelEl = document.getElementById('amount-label');
+            const inputEl = document.getElementById('form-amount');
+            if (wallet === 'emas') {
+                labelEl.innerText = "Jumlah Gram Emas (gr)";
+                inputEl.placeholder = "Contoh: 10";
+            } else {
+                labelEl.innerText = "Nominal (Rp)";
+                inputEl.placeholder = "Contoh: 500000";
+            }
+        }
+
+        function formatRupiah(num) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+        }
+        function formatWalletName(w) {
+            if (w === 'utama') return 'Tabungan Utama';
+            if (w === 'anak') return 'Tabungan Anak';
+            if (w === 'rumah') return 'Cicilan Rumah';
+            if (w === 'emas') return 'Emas Antam';
+            return w;
+        }
+
+        function openAddModal() { document.getElementById('addModal').classList.remove('hidden'); }
+        function closeAddModal() { document.getElementById('addModal').classList.add('hidden'); }
+        function openRoomModal() { document.getElementById('roomModal').classList.remove('hidden'); }
+        function closeRoomModal() { document.getElementById('roomModal').classList.add('hidden'); }
     </script>
 </body>
 </html>
