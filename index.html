@@ -1,1369 +1,603 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabunganku</title>
-    <link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
-</script>
+    <title>TabunganKita - Real-Time Savings Tracker</title>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
                     colors: {
                         brand: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                        },
-                        kid: {
-                            50: '#fff7ed',
-                            100: '#ffedd5',
-                            400: '#fb923c',
-                            500: '#f97316',
-                            600: '#ea580c',
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
                         }
                     }
                 }
             }
         }
     </script>
+
+    <!-- Font Awesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 9999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for mobile feel */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex justify-center selection:bg-emerald-500 selection:text-white">
 
-    <!-- Header Navigation -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-indigo-200">
-                        <i class="fa-solid font-bold fa-wallet"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold text-slate-900 leading-tight">TabunganKu</h1>
-                        <p class="text-xs text-slate-500">Pencatat Tabungan Pribadi, Anak & Cicilan Rumah</p>
-                    </div>
+    <!-- Mobile Container (Max Width App View) -->
+    <div class="w-full max-w-md bg-slate-900 min-h-screen shadow-2xl flex flex-col relative border-x border-slate-800/60 pb-20">
+
+        <!-- Top Header Navigation -->
+        <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-wallet text-slate-950 font-bold text-lg"></i>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button onclick="exportData()" class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition duration-200 flex items-center gap-1.5">
-                        <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Ekspor Data</span>
-                    </button>
-                    <button onclick="confirmResetData()" class="px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition duration-200 flex items-center gap-1.5">
-                        <i class="fa-solid fa-trash-alt"></i> <span class="hidden sm:inline">Reset</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
-        
-        <!-- Month & Year Filter Bar -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-2 text-slate-800 font-bold text-sm">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                    <i class="fa-solid fa-calendar-days"></i>
-                </div>
-                <span>Filter Periode Transaksi & Laporan:</span>
-            </div>
-            
-            <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                <select id="filterMonth" onchange="handlePeriodFilterChange()" class="px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none flex-grow sm:flex-grow-0">
-                    <option value="all">-- Semua Bulan --</option>
-                    <option value="0">Januari</option>
-                    <option value="1">Februari</option>
-                    <option value="2">Maret</option>
-                    <option value="3">April</option>
-                    <option value="4">Mei</option>
-                    <option value="5">Juni</option>
-                    <option value="6">Juli</option>
-                    <option value="7">Agustus</option>
-                    <option value="8">September</option>
-                    <option value="9">Oktober</option>
-                    <option value="10">November</option>
-                    <option value="11">Desember</option>
-                </select>
-
-                <select id="filterYear" onchange="handlePeriodFilterChange()" class="px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none flex-grow sm:flex-grow-0">
-                    <option value="all">-- Semua Tahun --</option>
-                </select>
-
-                <button onclick="resetPeriodFilter()" class="px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1">
-                    <i class="fa-solid fa-rotate-left"></i> Reset Filter
-                </button>
-            </div>
-        </div>
-
-        <!-- Category Filter Tabs -->
-        <div class="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto">
-            <button id="tab-all" onclick="setCategoryFilter('all')" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap flex items-center gap-2">
-                <i class="fa-solid fa-layer-group"></i> Semua Ringkasan
-            </button>
-            <button id="tab-personal" onclick="setCategoryFilter('personal')" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap flex items-center gap-2">
-                <i class="fa-solid fa-user"></i> Tabungan Pribadi
-            </button>
-            <button id="tab-kid" onclick="setCategoryFilter('kid')" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap flex items-center gap-2">
-                <i class="fa-solid fa-child-reaching text-orange-500"></i> Tabungan Anak
-            </button>
-            <button id="tab-mortgage" onclick="setCategoryFilter('mortgage')" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap flex items-center gap-2">
-                <i class="fa-solid fa-house-chimney text-rose-500"></i> Cicilan Rumah (KPR)
-            </button>
-        </div>
-
-        <!-- Summary Cards Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            <!-- Total Saldo Bersih Tabungan -->
-            <div class="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-6 text-white shadow-lg shadow-indigo-100 relative overflow-hidden">
-                <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl">
-                    <i class="fa-solid fa-vault"></i>
-                </div>
-                <p class="text-indigo-100 text-xs font-medium mb-1">Total Tabungan Bersih</p>
-                <h2 id="totalBalance" class="text-2xl font-extrabold tracking-tight mb-2">Rp 0</h2>
-                <span class="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full inline-block">Saldo Akumulasi</span>
-            </div>
-
-            <!-- Tabungan Anak Total -->
-            <div class="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg shadow-orange-100 relative overflow-hidden">
-                <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl">
-                    <i class="fa-solid fa-baby"></i>
-                </div>
-                <p class="text-orange-100 text-xs font-medium mb-1">Total Tabungan Anak</p>
-                <h3 id="totalKidBalance" class="text-2xl font-extrabold tracking-tight mb-2">Rp 0</h3>
-                <span class="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full inline-block">Khusus Anak</span>
-            </div>
-
-            <!-- Pemasukan Periode Ini -->
-            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <p class="text-slate-500 text-xs font-medium">Pemasukan Periode Ini</p>
-                        <h3 id="periodIncome" class="text-xl font-bold text-emerald-600 mt-1">Rp 0</h3>
-                    </div>
-                    <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                        <i class="fa-solid fa-arrow-down-left text-sm"></i>
-                    </div>
-                </div>
-                <p id="periodIncomeLabel" class="text-[11px] text-slate-400">Total dana masuk pada periode terpilih</p>
-            </div>
-
-            <!-- Pengeluaran Periode Ini -->
-            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <p class="text-slate-500 text-xs font-medium">Pengeluaran Periode Ini</p>
-                        <h3 id="periodExpense" class="text-xl font-bold text-rose-600 mt-1">Rp 0</h3>
-                    </div>
-                    <div class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
-                        <i class="fa-solid fa-arrow-up-right text-sm"></i>
-                    </div>
-                </div>
-                <p id="periodExpenseLabel" class="text-[11px] text-slate-400">Penarikan dana pada periode terpilih</p>
-            </div>
-        </div>
-
-        <!-- Extra Status Card for KPR -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div class="bg-slate-900 rounded-2xl p-5 text-white flex justify-between items-center">
                 <div>
-                    <p class="text-xs text-slate-400 font-medium">Sisa Cicilan Rumah (KPR)</p>
-                    <h4 id="remainingMortgage" class="text-xl font-bold text-white mt-0.5">Rp 0</h4>
+                    <h1 class="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+                        TabunganKita
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">SYNC</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400">Pencatatan Keuangan Real-Time</p>
                 </div>
-                <span id="mortgagePaidBadge" class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-medium">Terbayar: Rp 0</span>
             </div>
-            <div class="bg-indigo-900 rounded-2xl p-5 text-white flex justify-between items-center">
-                <div>
-                    <p class="text-xs text-indigo-300 font-medium">Netto Tabungan Periode Filter</p>
-                    <h4 id="periodNetBalance" class="text-xl font-bold text-white mt-0.5">Rp 0</h4>
-                </div>
-                <span class="text-xs bg-white/10 text-indigo-200 px-3 py-1 rounded-full font-medium"><i class="fa-solid fa-scale-balanced mr-1"></i>Pemasukan - Pengeluaran</span>
-            </div>
-        </div>
 
-        <!-- Section: KPR Overview Card (If Enabled/Available) -->
-        <div id="mortgageOverviewCard" class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white mb-8 shadow-xl relative overflow-hidden">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-                <div class="space-y-2 flex-grow">
-                    <div class="flex items-center gap-2">
-                        <span class="px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold">
-                            <i class="fa-solid fa-house-chimney mr-1"></i> Status Pelunasan KPR Rumah
-                        </span>
-                        <button onclick="openMortgageModal()" class="text-xs text-indigo-300 hover:text-white underline">Edit Detail KPR</button>
-                    </div>
-                    <h3 id="mortgageHouseName" class="text-xl font-bold text-white">Rumah Impian Family</h3>
-                    <p class="text-xs text-slate-300">Plafon Awal: <span id="mortgageTotalPlafon" class="font-semibold text-white">Rp 0</span> | Cicilan Per Bulan: <span id="mortgageMonthlyInstallment" class="font-semibold text-emerald-400">Rp 0</span></p>
-                    
-                    <!-- Progress Bar -->
-                    <div class="w-full max-w-xl space-y-1.5 pt-2">
-                        <div class="flex justify-between text-xs font-medium text-slate-300">
-                            <span>Progres Pelunasan: <b id="mortgagePercentText" class="text-emerald-400">0%</b></span>
-                            <span id="mortgageRemainingDetailText">Sisa: Rp 0</span>
+            <!-- Sync Room Button -->
+            <button onclick="openSyncModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 flex items-center space-x-2 transition text-xs font-medium text-slate-300">
+                <i class="fa-solid fa-arrows-rotate text-emerald-400 text-xs"></i>
+                <span id="room-code-label" class="font-mono text-emerald-300 font-bold">...</span>
+            </button>
+        </header>
+
+        <!-- Main Body Content -->
+        <main class="p-4 space-y-5 flex-1 overflow-y-auto">
+
+            <!-- Pocket / Wallet Badges Selector (Horizontal Scroll) -->
+            <section class="space-y-2">
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pilih Kantong Tabungan</span>
+                    <button onclick="openAddPocketModal()" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Tambah
+                    </button>
+                </div>
+                <div id="pocket-tabs" class="flex space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                    <!-- Dynamic rendering of wallets -->
+                </div>
+            </section>
+
+            <!-- Card Summary Main Balance -->
+            <section class="relative overflow-hidden rounded-3xl p-6 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white shadow-xl shadow-emerald-950/40">
+                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                <div class="absolute -left-6 -top-6 w-32 h-32 bg-emerald-400/20 rounded-full blur-lg pointer-events-none"></div>
+
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span id="pocket-active-name" class="text-xs text-emerald-100 font-bold tracking-wide uppercase bg-white/15 px-2 py-0.5 rounded-md">Tabungan Utama</span>
+                            <span class="text-[10px] text-emerald-200/80">(Terpisah)</span>
                         </div>
-                        <div class="w-full bg-slate-800 rounded-full h-3.5 p-0.5 border border-slate-700">
-                            <div id="mortgageProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        <h2 id="total-balance" class="text-3xl font-extrabold tracking-tight mt-2">Rp 0</h2>
+                    </div>
+                    <span class="px-2.5 py-1 bg-white/20 backdrop-blur-md text-[10px] uppercase font-bold tracking-wider rounded-lg border border-white/20">
+                        Real-Time
+                    </span>
+                </div>
+
+                <!-- Income / Outcome Stats Row -->
+                <div class="grid grid-cols-2 gap-3 pt-3 border-t border-white/20 mt-4">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-full bg-emerald-400/20 flex items-center justify-center text-emerald-200">
+                            <i class="fa-solid fa-arrow-down text-xs"></i>
+                        </div>
+                        <div>
+                            <p id="label-stat-income" class="text-[10px] text-emerald-100 font-medium">Total Masuk</p>
+                            <p id="total-income" class="text-sm font-semibold">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-full bg-rose-400/20 flex items-center justify-center text-rose-200">
+                            <i id="icon-stat-expense" class="fa-solid fa-arrow-up text-xs"></i>
+                        </div>
+                        <div>
+                            <p id="label-stat-expense" class="text-[10px] text-emerald-100 font-medium">Total Keluar</p>
+                            <p id="total-expense" class="text-sm font-semibold">Rp 0</p>
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <button onclick="quickPayMortgage()" class="px-5 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-hand-holding-dollar"></i> Bayar Cicilan Bulan Ini
-                    </button>
-                </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- Section: Targets & Add Form -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            
-            <!-- Left Side: Target Tabungan (2 Cols on lg) -->
-            <div class="lg:col-span-2 space-y-6">
-                <div class="flex justify-between items-center flex-wrap gap-2">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900" id="goalsTitle">Target Impian & Tabungan</h3>
-                        <p class="text-xs text-slate-500">Pantau progres rencana belanja, edukasi, atau kebutuhan anak</p>
+            <!-- Special Gold Summary Widget (Visible when 'gold' pocket is active) -->
+            <section id="gold-summary-widget" class="hidden bg-slate-800/90 border border-amber-500/40 rounded-2xl p-4 shadow-lg space-y-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-coins text-amber-400"></i>
+                        <h3 class="font-bold text-sm text-amber-300">Live Harga Emas Antam</h3>
                     </div>
-                    <button onclick="openGoalModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition duration-200 shadow-sm flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Tambah Target
+                    <button onclick="fetchLatestGoldPrice()" class="text-xs text-amber-400 hover:underline font-medium flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">
+                        <i class="fa-solid fa-rotate text-[10px]"></i> Refresh Harga
                     </button>
                 </div>
 
-                <!-- Goals Grid Container -->
-                <div id="goalsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Dynamic Goals will be rendered here -->
-                </div>
-            </div>
-
-            <!-- Right Side: Chart & Quick Transaction Form -->
-            <div class="space-y-6">
-                <!-- Transaction Form Card -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <h3 class="text-lg font-bold text-slate-900 mb-4">Catat Transaksi</h3>
-                    <form id="transactionForm" onsubmit="handleAddTransaction(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Kategori Akun / Pos</label>
-                            <div class="grid grid-cols-3 gap-1.5">
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="txAccountCategory" value="personal" checked class="peer hidden" onchange="updateGoalDropdownOptions()">
-                                    <div class="text-center py-2 px-2 text-xs font-medium border border-slate-200 rounded-xl peer-checked:bg-indigo-50 peer-checked:border-indigo-500 peer-checked:text-indigo-700 transition">
-                                        <i class="fa-solid fa-user block mb-1"></i> Pribadi
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="txAccountCategory" value="kid" class="peer hidden" onchange="updateGoalDropdownOptions()">
-                                    <div class="text-center py-2 px-2 text-xs font-medium border border-slate-200 rounded-xl peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 transition">
-                                        <i class="fa-solid fa-child block mb-1"></i> Anak
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="txAccountCategory" value="mortgage" class="peer hidden" onchange="updateGoalDropdownOptions()">
-                                    <div class="text-center py-2 px-2 text-xs font-medium border border-slate-200 rounded-xl peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-700 transition">
-                                        <i class="fa-solid fa-house-chimney block mb-1"></i> KPR
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div id="txTypeWrapper">
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Jenis Transaksi</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="txType" value="deposit" checked class="peer hidden">
-                                    <div class="text-center py-2 px-3 text-xs font-medium border border-slate-200 rounded-xl peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-700 transition">
-                                        <i class="fa-solid fa-plus-circle mr-1"></i> Menabung / Bayar
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="txType" value="withdraw" class="peer hidden">
-                                    <div class="text-center py-2 px-3 text-xs font-medium border border-slate-200 rounded-xl peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-700 transition">
-                                        <i class="fa-solid fa-minus-circle mr-1"></i> Penarikan
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nominal (Rp)</label>
-                            <input type="number" id="txAmount" required min="1" placeholder="Contoh: 3500000" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                        </div>
-
-                        <div id="goalSelectWrapper">
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Target Terkait (Opsional)</label>
-                            <select id="txGoalId" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                                <option value="">-- Tabungan Umum --</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Keterangan / Catatan</label>
-                            <input type="text" id="txNote" required placeholder="Contoh: Pembayaran Cicilan KPR Bulan Maret" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Tanggal</label>
-                            <input type="date" id="txDate" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                        </div>
-
-                        <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition duration-200 shadow-md">
-                            Simpan Transaksi
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Visual Chart Card -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <h3 class="text-sm font-bold text-slate-900 mb-3">Grafik Distribusi Keuangan</h3>
-                    <div class="relative h-52 w-full">
-                        <canvas id="allocationChart"></canvas>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-[10px]">Harga Beli Pasar / Gr</p>
+                        <p id="gold-price-buy" class="font-bold text-amber-300 text-sm mt-0.5">Rp 2.541.000</p>
+                    </div>
+                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-[10px]">Harga Buyback / Gr</p>
+                        <p id="gold-price-sell" class="font-bold text-emerald-400 text-sm mt-0.5">Rp 2.311.000</p>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Section: Transaction History -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-900">Riwayat Transaksi</h3>
-                    <p class="text-xs text-slate-500">Daftar arus masuk/keluar tabungan & pelunasan cicilan rumah</p>
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-amber-500/30 flex justify-between items-center text-xs">
+                    <div>
+                        <p class="text-slate-400 text-[11px]">Nilai Kas Pencairan (Buyback)</p>
+                        <p id="gold-total-buyback-val" class="font-extrabold text-emerald-400 text-base">Rp 0</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-500">Terakhir Diperbarui</p>
+                        <p id="gold-updated-time" class="text-[11px] text-slate-300 font-mono">Hari ini</p>
+                    </div>
                 </div>
-                <div class="w-full sm:w-auto flex items-center gap-2">
-                    <input type="text" id="searchInput" oninput="renderTransactions()" placeholder="Cari catatan / target..." class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none w-full sm:w-48">
-                </div>
-            </div>
+            </section>
 
-            <!-- Table -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
-                            <th class="py-3 px-6">Tanggal</th>
-                            <th class="py-3 px-6">Akun / Pos</th>
-                            <th class="py-3 px-6">Jenis</th>
-                            <th class="py-3 px-6">Keterangan</th>
-                            <th class="py-3 px-6">Target Terkait</th>
-                            <th class="py-3 px-6 text-right">Nominal</th>
-                            <th class="py-3 px-6 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactionTableBody" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Dynamic rows -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Modal Form: Edit Data KPR -->
-    <div id="mortgageModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl transform scale-95 transition-transform duration-200" id="mortgageModalContent">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-slate-900">Pengaturan Cicilan Rumah (KPR)</h3>
-                <button onclick="closeMortgageModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            
-            <form id="mortgageForm" onsubmit="handleSaveMortgage(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Properti / KPR</label>
-                    <input type="text" id="inputMortgageTitle" required placeholder="Contoh: KPR Rumah BSD" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Total Plafon / Harga Rumah (Rp)</label>
-                    <input type="number" id="inputMortgageTotal" required min="1" placeholder="Contoh: 450000000" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cicilan Bulanan Standar (Rp)</label>
-                    <input type="number" id="inputMortgageMonthly" required min="1" placeholder="Contoh: 3500000" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
+            <!-- Special House Installment Widget (Visible when 'house' pocket is active) -->
+            <section id="house-summary-widget" class="hidden bg-slate-800/90 border border-amber-500/30 rounded-2xl p-4 shadow-lg space-y-3 relative overflow-hidden">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-house-chimney text-amber-400 text-sm"></i>
+                        <h3 class="font-bold text-sm text-slate-200">Kalkulasi Cicilan Rumah</h3>
+                    </div>
+                    <button onclick="openSetHousePriceModal()" class="text-xs text-amber-400 hover:underline font-medium bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                        Set Harga Rumah
+                    </button>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeMortgageModal()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium rounded-xl text-sm transition">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition">Simpan KPR</button>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-[10px]">Harga Total Rumah</p>
+                        <p id="house-total-price" class="font-bold text-slate-200 text-sm mt-0.5">Rp 0</p>
+                    </div>
+                    <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-[10px]">Sisa Belum Dibayar</p>
+                        <p id="house-remaining-price" class="font-bold text-amber-400 text-sm mt-0.5">Rp 0</p>
+                    </div>
                 </div>
-            </form>
-        </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs text-slate-400 font-medium">
+                        <span>Progress Pelunasan</span>
+                        <span id="house-progress-percent" class="text-amber-400 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                        <div id="house-progress-bar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Target / Impian Tabungan Widget (Default Pockets) -->
+            <section id="default-target-widget" class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-bullseye text-emerald-400 text-sm"></i>
+                        <h3 class="font-bold text-sm text-slate-200">Target / Target Impian</h3>
+                    </div>
+                    <button onclick="openSetTargetModal()" class="text-xs text-emerald-400 hover:underline font-medium">
+                        Atur Target
+                    </button>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span id="target-title-display" class="font-medium">Target Belum Diatur</span>
+                        <span id="target-progress-text" class="font-bold text-emerald-400">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700/60">
+                        <div id="target-progress-bar" class="bg-gradient-to-r from-teal-400 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons: Add Transaction -->
+            <button onclick="openAddModal()" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition">
+                <i class="fa-solid fa-plus-circle text-base"></i>
+                <span id="btn-add-label">Tambah Transaksi Baru</span>
+            </button>
+
+            <!-- Transaction History Section -->
+            <section class="space-y-3">
+                <div class="flex justify-between items-center px-1">
+                    <h3 class="font-bold text-sm text-slate-200">Riwayat Transaksi</h3>
+                    <span id="pocket-label-history" class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">Tabungan Utama</span>
+                </div>
+
+                <div id="transaction-list" class="space-y-2.5">
+                    <!-- Dynamic List of Transactions -->
+                    <div class="bg-slate-800/40 border border-dashed border-slate-700 rounded-2xl p-6 text-center text-slate-400 space-y-2">
+                        <i class="fa-solid fa-folder-open text-3xl text-slate-600"></i>
+                        <p class="text-xs font-medium">Memuat data transaksi...</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
     </div>
 
-    <!-- Modal Form: Tambah/Edit Target -->
-    <div id="goalModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl transform scale-95 transition-transform duration-200" id="goalModalContent">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-slate-900" id="modalGoalTitle">Tambah Target Tabungan</h3>
-                <button onclick="closeGoalModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            
-            <form id="goalForm" onsubmit="handleSaveGoal(event)" class="space-y-4">
-                <input type="hidden" id="goalId">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kategori Akun Target</label>
-                    <select id="goalCategory" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                        <option value="personal">Tabungan Pribadi</option>
-                        <option value="kid">Tabungan Anak</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Target</label>
-                    <input type="text" id="goalName" required placeholder="Contoh: Uang Sekolah, Mainan, Laptop" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target Nominal (Rp)</label>
-                    <input type="number" id="goalTarget" required min="1" placeholder="Contoh: 5000000" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pilih Ikon</label>
-                    <div class="grid grid-cols-6 gap-2">
-                        <label class="cursor-pointer text-center">
-                            <input type="radio" name="goalIcon" value="fa-piggy-bank" checked class="peer hidden">
-                            <div class="p-2 border rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 text-slate-600 peer-checked:text-indigo-600">
-                                <i class="fa-solid fa-piggy-bank text-lg"></i>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer text-center">
-                            <input type="radio" name="goalIcon" value="fa-graduation-cap" class="peer hidden">
-                            <div class="p-2 border rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 text-slate-600 peer-checked:text-indigo-600">
-                                <i class="fa-solid fa-graduation-cap text-lg"></i>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer text-center">
-                            <input type="radio" name="goalIcon" value="fa-gamepad" class="peer hidden">
-                            <div class="p-2 border rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 text-slate-600 peer-checked:text-indigo-600">
-                                <i class="fa-solid fa-gamepad text-lg"></i>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer text-center">
-                            <input type="radio" name="goalIcon" value="fa-laptop" class="peer hidden">
-                            <div class="p-2 border rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 text-slate-600 peer-checked:text-indigo-600">
-                                <i class="fa-solid fa-laptop text-lg"></i>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer text-center">
-                            <input type="radio" name="goalIcon" value="fa-bicycle" class="peer hidden">
-                            <div class="p-2 border rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 text-slate-600 peer-checked:text-indigo-600">
-                                <i class="fa-solid fa-bicycle text-lg"></i>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer text-center">
-                            <input type="radio" name="goalIcon" value="fa-plane" class="peer hidden">
-                            <div class="p-2 border rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 text-slate-600 peer-checked:text-indigo-600">
-                                <i class="fa-solid fa-plane text-lg"></i>
-                            </div>
-                        </label>
-                    </div>
-                </div>
+    <!-- Firebase App & Firestore Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, collection, doc, onSnapshot, setDoc, addDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeGoalModal()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium rounded-xl text-sm transition">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition">Simpan Target</button>
-                </div>
-            </form>
-        </div>
-    </div>
+        // Demo Public Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-demo-key-tabungankita",
+            authDomain: "tabungankita-demo.firebaseapp.com",
+            projectId: "tabungankita-demo",
+            storageBucket: "tabungankita-demo.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef123456"
+        };
 
-    <!-- Notification Toast Container -->
-    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-    <!-- Application Script -->
-    <script>
-        // State Management
-        let goals = [];
+        // Global State variables
+        let currentUser = null;
+        let currentRoomCode = getSavedRoomCode() || "TABUNGAN-UTAMA";
+        let activePocketId = 'main';
+        let pockets = [
+            { id: 'main', name: 'Tabungan Utama', icon: 'fa-piggy-bank' },
+            { id: 'child', name: 'Tabungan Anak', icon: 'fa-child' },
+            { id: 'house', name: 'Cicilan Rumah', icon: 'fa-house-chimney' },
+            { id: 'gold', name: 'Emas Antam', icon: 'fa-coins' }
+        ];
         let transactions = [];
-        let mortgageConfig = {};
-        let chartInstance = null;
-        let activeCategoryFilter = 'all'; // 'all' | 'personal' | 'kid' | 'mortgage'
-        let selectedMonthFilter = 'all';  // 'all' | 0 - 11
-        let selectedYearFilter = 'all';   // 'all' | 2024, 2025, 2026, ...
+        let targets = {};
+        let houseMeta = { price: 0 };
+        let goldPriceData = { buyPrice: 2541000, buybackPrice: 2311000, lastUpdated: 'Hari ini' };
+        let unsubscribeTxListener = null;
 
-        // 1. Pastikan URL menggunakan URL Deploy terbaru Anda
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyF3R5_iTAcnfgaHySvgW7k0UyC_FJnlaq5adOR6rfiJoemMzfa4XhtV4YioKrYdSxeAA/exec';
-
-// 2. Fungsi Ambil Data dari Cloud
-async function syncDataFromCloud() {
-    if (!WEB_APP_URL || WEB_APP_URL.includes('https://script.google.com/macros/s/AKfycbyF3R5_iTAcnfgaHySvgW7k0UyC_FJnlaq5adOR6rfiJoemMzfa4XhtV4YioKrYdSxeAA/exec')) return;
-    
-    try {
-        let response = await fetch(WEB_APP_URL + '?t=' + new Date().getTime());
-        let result = await response.json();
-        
-        if (Array.isArray(result) && result.length > 0) {
-            transactions = result;
-            // Jika ada fungsi pembaharuan tampilan di PWA Anda, panggil di sini
-            if (typeof renderApp === 'function') renderApp();
-            if (typeof initApp === 'function') initApp();
+        // Utility: Format currency to IDR
+        function formatRp(val) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
         }
-    } catch (error) {
-        console.error('Gagal sinkronisasi data cloud:', error);
-    }
-}
 
-// 3. Simpan Transaksi Baru ke Cloud
-async function saveTransactionToCloud(txData) {
-    if (!WEB_APP_URL) return;
-    try {
-        await fetch(WEB_APP_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(txData)
+        // Room LocalStorage Persistence
+        function getSavedRoomCode() {
+            return localStorage.getItem('tabungankita_room');
+        }
+        function saveRoomCode(code) {
+            localStorage.setItem('tabungankita_room', code);
+        }
+
+        // Initialize Firebase Auth Anonymous login
+        signInAnonymously(auth).catch(err => console.log("Auth Anonymous Note:", err));
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                initRoomListener(currentRoomCode);
+            }
         });
-        // Ambil ulang data setelah menyimpan
-        setTimeout(syncDataFromCloud, 1500);
-    } catch (error) {
-        console.error('Gagal kirim ke cloud:', error);
-    }
-}
 
-        // Default Initial Data
-        const defaultMortgage = {
-            title: 'Rumah Impian Family',
-            totalPlafon: 360000000,
-            monthlyInstallment: 3000000
+        // Initialize Real-time Firestore Listener
+        function initRoomListener(roomCode) {
+            currentRoomCode = roomCode;
+            document.getElementById('room-code-label').innerText = roomCode;
+            saveRoomCode(roomCode);
+
+            if (unsubscribeTxListener) unsubscribeTxListener();
+
+            const txRef = collection(db, "rooms", roomCode, "transactions");
+            const q = query(txRef, orderBy("createdAt", "desc"));
+
+            unsubscribeTxListener = onSnapshot(q, (snapshot) => {
+                transactions = [];
+                snapshot.forEach((docSnap) => {
+                    transactions.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderDashboard();
+            }, (error) => {
+                console.warn("Firestore Demo Mode / Local Fallback:", error.message);
+                loadLocalDemoData();
+            });
+        }
+
+        // Fallback for Demo usage
+        function loadLocalDemoData() {
+            const localData = localStorage.getItem(`tx_${currentRoomCode}`);
+            transactions = localData ? JSON.parse(localData) : [];
+            renderDashboard();
+        }
+
+        function saveLocalDemoData() {
+            localStorage.setItem(`tx_${currentRoomCode}`, JSON.stringify(transactions));
+            renderDashboard();
+        }
+
+        // Switching Pockets
+        window.switchPocket = function(pocketId) {
+            activePocketId = pocketId;
+            renderPocketTabs();
+            renderDashboard();
         };
 
-        const defaultGoals = [
-            { id: 'g1', category: 'personal', name: 'Dana Darurat', target: 10000000, icon: 'fa-piggy-bank' },
-            { id: 'g2', category: 'personal', name: 'Gadget Baru', target: 7500000, icon: 'fa-laptop' },
-            { id: 'g3', category: 'kid', name: 'Tabungan Pendidikan Anak', target: 15000000, icon: 'fa-graduation-cap' },
-            { id: 'g4', category: 'kid', name: 'Sepeda Baru Anak', target: 2000000, icon: 'fa-bicycle' }
-        ];
+        // Render Pocket Selector Badges
+        function renderPocketTabs() {
+            const container = document.getElementById('pocket-tabs');
+            container.innerHTML = pockets.map(pocket => {
+                const isActive = pocket.id === activePocketId;
+                return `
+                    <button onclick="switchPocket('${pocket.id}')" class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all ${
+                        isActive 
+                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border border-emerald-400' 
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/70'
+                    }">
+                        <i class="fa-solid ${pocket.icon || 'fa-wallet'}"></i>
+                        <span>${escapeHtml(pocket.name)}</span>
+                    </button>
+                `;
+            }).join('');
 
-        const defaultTransactions = [
-            { id: 't1', category: 'personal', type: 'deposit', amount: 3000000, goalId: 'g1', note: 'Setoran Awal Dana Darurat', date: '2026-03-01' },
-            { id: 't2', category: 'personal', type: 'deposit', amount: 1500000, goalId: 'g2', note: 'Tabungan Gadget Bulan Maret', date: '2026-03-02' },
-            { id: 't3', category: 'kid', type: 'deposit', amount: 1000000, goalId: 'g3', note: 'Beasiswa / Angpao Anak', date: '2026-03-02' },
-            { id: 't4', category: 'kid', type: 'deposit', amount: 500000, goalId: 'g4', note: 'Sisihan Uang Saku Anak', date: '2026-03-03' },
-            { id: 't5', category: 'mortgage', type: 'deposit', amount: 3000000, goalId: '', note: 'Setoran Cicilan Rumah Bulan 1', date: '2026-03-03' },
-            { id: 't6', category: 'mortgage', type: 'deposit', amount: 3000000, goalId: '', note: 'Setoran Cicilan Rumah Bulan 2', date: '2026-04-03' }
-        ];
+            const activePocketObj = pockets.find(p => p.id === activePocketId) || pockets[0];
+            document.getElementById('pocket-active-name').innerText = activePocketObj.name;
+            document.getElementById('pocket-label-history').innerText = activePocketObj.name;
+            document.getElementById('btn-add-label').innerText = `Tambah ke ${activePocketObj.name}`;
 
-        // Initialization
-        window.onload = function() {
-            loadState();
-            document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-            populateYearFilterOptions();
-            
-            // Set current month and year default
-            const now = new Date();
-            document.getElementById('filterMonth').value = now.getMonth().toString();
-            document.getElementById('filterYear').value = now.getFullYear().toString();
-            selectedMonthFilter = now.getMonth().toString();
-            selectedYearFilter = now.getFullYear().toString();
+            document.getElementById('house-summary-widget').classList.add('hidden');
+            document.getElementById('gold-summary-widget').classList.add('hidden');
+            document.getElementById('default-target-widget').classList.add('hidden');
 
-            renderAll();
-        };
-
-        // Populate Dynamic Year Options in Filter Dropdown
-        function populateYearFilterOptions() {
-            const yearSelect = document.getElementById('filterYear');
-            const years = new Set();
-            
-            // Collect years from transactions
-            transactions.forEach(t => {
-                if (t.date) {
-                    const y = new Date(t.date).getFullYear();
-                    if (!isNaN(y)) years.add(y);
-                }
-            });
-            years.add(new Date().getFullYear());
-
-            const sortedYears = Array.from(years).sort((a, b) => b - a);
-            yearSelect.innerHTML = '<option value="all">-- Semua Tahun --</option>';
-            sortedYears.forEach(y => {
-                const opt = document.createElement('option');
-                opt.value = y;
-                opt.textContent = y;
-                yearSelect.appendChild(opt);
-            });
-        }
-
-        // Period Filter Events
-        function handlePeriodFilterChange() {
-            selectedMonthFilter = document.getElementById('filterMonth').value;
-            selectedYearFilter = document.getElementById('filterYear').value;
-            renderAll();
-        }
-
-        function resetPeriodFilter() {
-            document.getElementById('filterMonth').value = 'all';
-            document.getElementById('filterYear').value = 'all';
-            selectedMonthFilter = 'all';
-            selectedYearFilter = 'all';
-            renderAll();
-        }
-
-        // Local Storage Helpers
-        function loadState() {
-            const storedGoals = localStorage.getItem('TabunganKu_family_goals');
-            const storedTxs = localStorage.getItem('TabunganKu_family_transactions');
-            const storedMortgage = localStorage.getItem('TabunganKu_family_mortgage');
-
-            goals = storedGoals ? JSON.parse(storedGoals) : defaultGoals;
-            transactions = storedTxs ? JSON.parse(storedTxs) : defaultTransactions;
-            mortgageConfig = storedMortgage ? JSON.parse(storedMortgage) : defaultMortgage;
-        }
-
-        function saveState() {
-            localStorage.setItem('TabunganKu_family_goals', JSON.stringify(goals));
-            localStorage.setItem('TabunganKu_family_transactions', JSON.stringify(transactions));
-            localStorage.setItem('TabunganKu_family_mortgage', JSON.stringify(mortgageConfig));
-            populateYearFilterOptions();
-            renderAll();
-        }
-
-        // Format Currency Helper
-        function formatRP(number) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
-        }
-
-        // Category Filter Switcher
-        function setCategoryFilter(cat) {
-            activeCategoryFilter = cat;
-            
-            // Highlight Tab Buttons
-            ['all', 'personal', 'kid', 'mortgage'].forEach(c => {
-                const btn = document.getElementById(`tab-${c}`);
-                if (c === cat) {
-                    btn.className = "py-2.5 px-4 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap flex items-center gap-2";
-                } else {
-                    btn.className = "py-2.5 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap flex items-center gap-2";
-                }
-            });
-
-            // Update title
-            const goalsTitle = document.getElementById('goalsTitle');
-            if (cat === 'kid') goalsTitle.innerText = "Target Tabungan Anak";
-            else if (cat === 'personal') goalsTitle.innerText = "Target Tabungan Pribadi";
-            else if (cat === 'mortgage') goalsTitle.innerText = "Informasi Cicilan Rumah (KPR)";
-            else goalsTitle.innerText = "Target Impian & Tabungan";
-
-            renderAll();
-        }
-
-        // Helper check transaction matches date period filter
-        function isTransactionInPeriod(tx) {
-            if (!tx.date) return true;
-            const d = new Date(tx.date);
-            const txMonth = d.getMonth().toString();
-            const txYear = d.getFullYear().toString();
-
-            const matchMonth = selectedMonthFilter === 'all' || txMonth === selectedMonthFilter;
-            const matchYear = selectedYearFilter === 'all' || txYear === selectedYearFilter;
-
-            return matchMonth && matchYear;
-        }
-
-        // Calculate Totals & Dynamic Balances
-        function computeData() {
-            let totalIncomeAllTime = 0;
-            let totalExpenseAllTime = 0;
-            let totalKidBalance = 0;
-            let totalPersonalBalance = 0;
-            let totalPaidMortgage = 0;
-
-            let periodIncome = 0;
-            let periodExpense = 0;
-
-            const goalBalances = {};
-            goals.forEach(g => goalBalances[g.id] = 0);
-            
-            let generalPersonalSavings = 0;
-            let generalKidSavings = 0;
-
-            transactions.forEach(tx => {
-                const amt = Number(tx.amount);
-                const inPeriod = isTransactionInPeriod(tx);
-
-                if (tx.category === 'mortgage') {
-                    if (tx.type === 'deposit') {
-                        totalPaidMortgage += amt;
-                        if (inPeriod) periodIncome += amt;
-                    } else {
-                        totalPaidMortgage -= amt;
-                        if (inPeriod) periodExpense += amt;
-                    }
-                    return;
-                }
-
-                const isKid = tx.category === 'kid';
-
-                if (tx.type === 'deposit') {
-                    totalIncomeAllTime += amt;
-                    if (inPeriod) periodIncome += amt;
-
-                    if (isKid) totalKidBalance += amt;
-                    else totalPersonalBalance += amt;
-
-                    if (tx.goalId && goalBalances[tx.goalId] !== undefined) {
-                        goalBalances[tx.goalId] += amt;
-                    } else {
-                        if (isKid) generalKidSavings += amt;
-                        else generalPersonalSavings += amt;
-                    }
-                } else if (tx.type === 'withdraw') {
-                    totalExpenseAllTime += amt;
-                    if (inPeriod) periodExpense += amt;
-
-                    if (isKid) totalKidBalance -= amt;
-                    else totalPersonalBalance -= amt;
-
-                    if (tx.goalId && goalBalances[tx.goalId] !== undefined) {
-                        goalBalances[tx.goalId] -= amt;
-                    } else {
-                        if (isKid) generalKidSavings -= amt;
-                        else generalPersonalSavings -= amt;
-                    }
-                }
-            });
-
-            const totalBalance = totalIncomeAllTime - totalExpenseAllTime;
-            const remainingMortgage = Math.max(0, mortgageConfig.totalPlafon - totalPaidMortgage);
-            const periodNetBalance = periodIncome - periodExpense;
-
-            return {
-                totalBalance,
-                totalPersonalBalance,
-                totalKidBalance,
-                totalPaidMortgage,
-                remainingMortgage,
-                periodIncome,
-                periodExpense,
-                periodNetBalance,
-                goalBalances,
-                generalPersonalSavings,
-                generalKidSavings
-            };
-        }
-
-        // Render Everything
-        function renderAll() {
-            const computed = computeData();
-
-            // Render Summary Cards
-            document.getElementById('totalBalance').innerText = formatRP(computed.totalBalance);
-            document.getElementById('totalKidBalance').innerText = formatRP(computed.totalKidBalance);
-            document.getElementById('remainingMortgage').innerText = formatRP(computed.remainingMortgage);
-            document.getElementById('mortgagePaidBadge').innerText = `Terbayar: ${formatRP(computed.totalPaidMortgage)}`;
-            
-            document.getElementById('periodIncome').innerText = formatRP(computed.periodIncome);
-            document.getElementById('periodExpense').innerText = formatRP(computed.periodExpense);
-            document.getElementById('periodNetBalance').innerText = formatRP(computed.periodNetBalance);
-
-            // Render Mortgage Overview Card
-            renderMortgageOverview(computed);
-
-            // Render Transaction Form Dropdown
-            updateGoalDropdownOptions();
-
-            // Render Target Cards
-            renderGoalCards(computed.goalBalances);
-
-            // Render Transactions Table
-            renderTransactions();
-
-            // Render Allocation Chart
-            renderChart(computed);
-        }
-
-        // Render Mortgage Overview Card
-        function renderMortgageOverview(computed) {
-            document.getElementById('mortgageHouseName').innerText = mortgageConfig.title || 'Rumah Impian Family';
-            document.getElementById('mortgageTotalPlafon').innerText = formatRP(mortgageConfig.totalPlafon || 0);
-            document.getElementById('mortgageMonthlyInstallment').innerText = formatRP(mortgageConfig.monthlyInstallment || 0);
-
-            const percentPaid = mortgageConfig.totalPlafon > 0 
-                ? Math.min(100, Math.round((computed.totalPaidMortgage / mortgageConfig.totalPlafon) * 100))
-                : 0;
-
-            document.getElementById('mortgagePercentText').innerText = `${percentPaid}%`;
-            document.getElementById('mortgageRemainingDetailText').innerText = `Sisa: ${formatRP(computed.remainingMortgage)}`;
-            document.getElementById('mortgageProgressBar').style.width = `${percentPaid}%`;
-        }
-
-        // Quick Pay Monthly Mortgage
-        function quickPayMortgage() {
-            const amount = mortgageConfig.monthlyInstallment || 0;
-            if (amount <= 0) {
-                showToast('Harap atur cicilan bulanan di Pengaturan KPR terlebih dahulu.', 'error');
-                return;
-            }
-
-            const newTx = {
-                id: 'tx_' + Date.now(),
-                category: 'mortgage',
-                type: 'deposit',
-                amount: amount,
-                goalId: '',
-                note: `Setoran Cicilan KPR Bulan ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`,
-                date: new Date().toISOString().split('T')[0]
-            };
-
-            transactions.push(newTx);
-            saveState();
-            showToast(`Pembayaran cicilan KPR (${formatRP(amount)}) berhasil dicatat!`, 'success');
-        }
-
-        // Modal Operations KPR
-        function openMortgageModal() {
-            document.getElementById('inputMortgageTitle').value = mortgageConfig.title || '';
-            document.getElementById('inputMortgageTotal').value = mortgageConfig.totalPlafon || '';
-            document.getElementById('inputMortgageMonthly').value = mortgageConfig.monthlyInstallment || '';
-
-            const modal = document.getElementById('mortgageModal');
-            const content = document.getElementById('mortgageModalContent');
-
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                content.classList.remove('scale-95');
-                content.classList.add('scale-100');
-            }, 10);
-        }
-
-        function closeMortgageModal() {
-            const modal = document.getElementById('mortgageModal');
-            const content = document.getElementById('mortgageModalContent');
-
-            modal.classList.add('opacity-0');
-            content.classList.remove('scale-100');
-            content.classList.add('scale-95');
-
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 200);
-        }
-
-        function handleSaveMortgage(e) {
-            e.preventDefault();
-            mortgageConfig.title = document.getElementById('inputMortgageTitle').value;
-            mortgageConfig.totalPlafon = parseFloat(document.getElementById('inputMortgageTotal').value);
-            mortgageConfig.monthlyInstallment = parseFloat(document.getElementById('inputMortgageMonthly').value);
-
-            saveState();
-            closeMortgageModal();
-            showToast('Pengaturan KPR Rumah berhasil diperbarui!', 'success');
-        }
-
-        // Update Dropdown Goals in Transaction Form according to selected Account Category
-        function updateGoalDropdownOptions() {
-            const txCatRadio = document.querySelector('input[name="txAccountCategory"]:checked');
-            const selectedAccountCat = txCatRadio ? txCatRadio.value : 'personal';
-
-            const goalSelectWrapper = document.getElementById('goalSelectWrapper');
-
-            if (selectedAccountCat === 'mortgage') {
-                goalSelectWrapper.classList.add('hidden');
+            if (activePocketId === 'house') {
+                document.getElementById('label-stat-income').innerText = 'Sudah Dibayar (Setoran)';
+                document.getElementById('label-stat-expense').innerText = 'Pengeluaran/Lainnya';
+                document.getElementById('house-summary-widget').classList.remove('hidden');
+            } else if (activePocketId === 'gold') {
+                document.getElementById('label-stat-income').innerText = 'Total Fisik Emas';
+                document.getElementById('label-stat-expense').innerText = 'Pengurangan (Gram)';
+                document.getElementById('gold-summary-widget').classList.remove('hidden');
+                document.getElementById('default-target-widget').classList.remove('hidden');
+                fetchLatestGoldPrice();
             } else {
-                goalSelectWrapper.classList.remove('hidden');
+                document.getElementById('label-stat-income').innerText = 'Total Masuk';
+                document.getElementById('label-stat-expense').innerText = 'Total Keluar';
+                document.getElementById('default-target-widget').classList.remove('hidden');
             }
-
-            const select = document.getElementById('txGoalId');
-            select.innerHTML = '<option value="">-- Tabungan Umum --</option>';
-
-            const filteredGoals = goals.filter(g => g.category === selectedAccountCat);
-            filteredGoals.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g.id;
-                opt.textContent = g.name;
-                select.appendChild(opt);
-            });
         }
 
-        // Render Goal Cards
-        function renderGoalCards(goalBalances) {
-            const container = document.getElementById('goalsContainer');
-            container.innerHTML = '';
+        // Render Dashboard UI filtered by active pocket ONLY
+        function renderDashboard() {
+            const filteredTx = transactions.filter(t => (t.pocketId || 'main') === activePocketId);
 
-            if (activeCategoryFilter === 'mortgage') {
-                container.innerHTML = `
-                    <div class="col-span-full bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center text-rose-800">
-                        <i class="fa-solid fa-house-chimney text-3xl mb-2 text-rose-500"></i>
-                        <p class="text-sm font-bold">Kategori Cicilan Rumah (KPR)</p>
-                        <p class="text-xs text-rose-600 mt-1">Gunakan tombol "Bayar Cicilan Bulan Ini" atau Form Transaksi KPR untuk mencatat pelunasan rumah.</p>
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            const listContainer = document.getElementById('transaction-list');
+
+            if (filteredTx.length === 0) {
+                const activePocketObj = pockets.find(p => p.id === activePocketId);
+                listContainer.innerHTML = `
+                    <div class="bg-slate-800/40 border border-dashed border-slate-700 rounded-2xl p-6 text-center text-slate-400 space-y-2">
+                        <i class="fa-solid fa-folder-open text-3xl text-slate-600"></i>
+                        <p class="text-xs font-medium">Belum ada transaksi di "${escapeHtml(activePocketObj?.name)}".</p>
+                        <p class="text-[11px] text-slate-500">Saldo pos ini dipisahkan & tidak digabung dengan pos lain.</p>
                     </div>
                 `;
-                return;
-            }
+            } else {
+                listContainer.innerHTML = filteredTx.map(item => {
+                    const amountNum = parseFloat(item.amount) || 0;
+                    const isIncome = item.type === 'income';
 
-            const filteredGoals = activeCategoryFilter === 'all' 
-                ? goals 
-                : goals.filter(g => g.category === activeCategoryFilter);
+                    if (isIncome) totalIncome += amountNum;
+                    else totalExpense += amountNum;
 
-            if (filteredGoals.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full bg-slate-100/70 border border-dashed border-slate-300 rounded-2xl p-6 text-center text-slate-500">
-                        <i class="fa-solid fa-bullseye text-3xl mb-2 text-slate-400"></i>
-                        <p class="text-sm font-medium">Belum ada target tabungan di kategori ini.</p>
-                        <p class="text-xs text-slate-400">Klik "Tambah Target" untuk membuat baru.</p>
-                    </div>
-                `;
-                return;
-            }
+                    const formattedDate = item.date ? new Date(item.date).toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'short', year: 'numeric'
+                    }) : '-';
 
-            filteredGoals.forEach(g => {
-                const currentAmount = goalBalances[g.id] || 0;
-                const percentage = Math.min(100, Math.max(0, Math.round((currentAmount / g.target) * 100)));
-                const isKid = g.category === 'kid';
+                    let typeLabel = isIncome ? 'Masuk' : 'Keluar';
+                    let amountDisplay = formatRp(amountNum);
 
-                const card = document.createElement('div');
-                card.className = `bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between ${isKid ? 'border-orange-200' : 'border-slate-200'}`;
-                
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl ${isKid ? 'bg-orange-100 text-orange-600' : 'bg-indigo-50 text-indigo-600'} flex items-center justify-center font-bold text-lg">
-                                    <i class="fa-solid ${g.icon || 'fa-piggy-bank'}"></i>
+                    if (activePocketId === 'house') {
+                        typeLabel = isIncome ? 'Setoran Cicilan' : 'Pengeluaran';
+                    } else if (activePocketId === 'gold') {
+                        typeLabel = isIncome ? 'Tambah Emas' : 'Jual/Kurang Emas';
+                        amountDisplay = `${amountNum} Gram`;
+                    }
+
+                    return `
+                        <div class="bg-slate-800/80 border border-slate-700/60 hover:border-slate-600 rounded-2xl p-3.5 flex items-center justify-between transition">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-xl ${isIncome ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'} flex items-center justify-center">
+                                    <i class="fa-solid ${isIncome ? 'fa-arrow-down' : 'fa-arrow-up'} text-sm"></i>
                                 </div>
                                 <div>
-                                    <div class="flex items-center gap-2">
-                                        <h4 class="font-bold text-slate-800 text-sm">${g.name}</h4>
-                                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${isKid ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}">
-                                            ${isKid ? 'Anak' : 'Pribadi'}
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-slate-400">Target: ${formatRP(g.target)}</p>
+                                    <h4 class="font-semibold text-xs text-slate-200 line-clamp-1">${escapeHtml(item.note)}</h4>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">${formattedDate}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-1">
-                                <button onclick="openGoalModal('${g.id}')" class="text-slate-400 hover:text-slate-600 p-1 rounded">
-                                    <i class="fa-solid fa-pen text-xs"></i>
-                                </button>
-                                <button onclick="deleteGoal('${g.id}')" class="text-slate-400 hover:text-rose-600 p-1 rounded">
-                                    <i class="fa-solid fa-trash text-xs"></i>
+                            <div class="flex items-center space-x-3">
+                                <div class="text-right">
+                                    <p class="font-bold text-xs ${isIncome ? 'text-emerald-400' : 'text-rose-400'}">
+                                        ${isIncome ? '+' : '-'} ${amountDisplay}
+                                    </p>
+                                    <p class="text-[9px] uppercase tracking-wider ${isIncome ? 'text-emerald-500/80' : 'text-rose-500/80'} font-semibold">
+                                        ${typeLabel}
+                                    </p>
+                                </div>
+                                <button onclick="deleteTx('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition" title="Hapus">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
                         </div>
-
-                        <div class="space-y-1 mb-2">
-                            <div class="flex justify-between text-xs font-semibold">
-                                <span class="text-slate-600">${formatRP(currentAmount)}</span>
-                                <span class="${percentage >= 100 ? 'text-emerald-600 font-bold' : 'text-slate-500'}">${percentage}%</span>
-                            </div>
-                            <!-- Progress Bar -->
-                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                <div class="${isKid ? 'bg-orange-500' : 'bg-indigo-600'} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="pt-2 border-t border-slate-50 flex justify-between items-center text-xs text-slate-400">
-                        <span>${currentAmount >= g.target ? '🎉 Target Tercapai!' : `Sisa: ${formatRP(Math.max(0, g.target - currentAmount))}`}</span>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        // Render Transaction Table with Period Filter
-        function renderTransactions() {
-            const tbody = document.getElementById('transactionTableBody');
-            const searchKeyword = document.getElementById('searchInput').value.toLowerCase();
-
-            tbody.innerHTML = '';
-
-            const filteredTxs = transactions.filter(tx => {
-                const categoryMatch = activeCategoryFilter === 'all' || tx.category === activeCategoryFilter;
-                const periodMatch = isTransactionInPeriod(tx);
-                
-                const noteMatch = tx.note.toLowerCase().includes(searchKeyword);
-                const goal = goals.find(g => g.id === tx.goalId);
-                const goalMatch = goal ? goal.name.toLowerCase().includes(searchKeyword) : false;
-                
-                return categoryMatch && periodMatch && (noteMatch || goalMatch);
-            });
-
-            if (filteredTxs.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="py-6 text-center text-slate-400 text-xs">
-                            Tidak ada catatan transaksi ditemukan pada periode terpilih.
-                        </td>
-                    </tr>
-                `;
-                return;
+                    `;
+                }).join('');
             }
 
-            const sorted = [...filteredTxs].sort((a, b) => new Date(b.date) - new Date(a.date));
+            if (activePocketId === 'gold') {
+                const totalGrams = totalIncome - totalExpense;
+                const buybackVal = totalGrams * goldPriceData.buybackPrice;
 
-            sorted.forEach(tx => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                document.getElementById('total-balance').innerText = `${totalGrams} Gram`;
+                document.getElementById('total-income').innerText = `${totalIncome} Gr`;
+                document.getElementById('total-expense').innerText = `${totalExpense} Gr`;
+                document.getElementById('gold-total-buyback-val').innerText = formatRp(buybackVal);
 
-                const isDeposit = tx.type === 'deposit';
-                let categoryBadge = '';
-                
-                if (tx.category === 'kid') {
-                    categoryBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-orange-100 text-orange-700"><i class="fa-solid fa-child-reaching mr-1 text-[10px]"></i>Tabungan Anak</span>`;
-                } else if (tx.category === 'mortgage') {
-                    categoryBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-100 text-rose-700"><i class="fa-solid fa-house-chimney mr-1 text-[10px]"></i>Cicilan Rumah</span>`;
-                } else {
-                    categoryBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-700"><i class="fa-solid fa-user mr-1 text-[10px]"></i>Pribadi</span>`;
-                }
-
-                const goal = goals.find(g => g.id === tx.goalId);
-                const goalName = tx.category === 'mortgage' ? 'Pelunasan KPR' : (goal ? goal.name : 'Tabungan Umum');
-
-                tr.innerHTML = `
-                    <td class="py-3.5 px-6 whitespace-nowrap text-xs text-slate-500">${tx.date}</td>
-                    <td class="py-3.5 px-6 whitespace-nowrap">${categoryBadge}</td>
-                    <td class="py-3.5 px-6 whitespace-nowrap">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isDeposit ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-                            <i class="fa-solid ${isDeposit ? 'fa-arrow-down' : 'fa-arrow-up'} mr-1 text-[10px]"></i>
-                            ${tx.category === 'mortgage' ? (isDeposit ? 'Bayar KPR' : 'Koreksi KPR') : (isDeposit ? 'Menabung' : 'Penarikan')}
-                        </span>
-                    </td>
-                    <td class="py-3.5 px-6 font-medium text-slate-800 text-xs">${escapeHtml(tx.note)}</td>
-                    <td class="py-3.5 px-6 text-xs text-slate-500">
-                        <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">${escapeHtml(goalName)}</span>
-                    </td>
-                    <td class="py-3.5 px-6 text-right font-semibold text-xs ${isDeposit ? 'text-emerald-600' : 'text-rose-600'}">
-                        ${isDeposit ? '+' : '-'} ${formatRP(tx.amount)}
-                    </td>
-                    <td class="py-3.5 px-6 text-center">
-                        <button onclick="deleteTransaction('${tx.id}')" class="text-slate-400 hover:text-rose-600 transition">
-                            <i class="fa-solid fa-trash-alt text-xs"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Render Chart.js
-        function renderChart(computed) {
-            const ctx = document.getElementById('allocationChart').getContext('2d');
-            
-            const labels = [];
-            const dataValues = [];
-            const bgColors = [];
-
-            // Display Income vs Expense for Period or Distribution
-            if (activeCategoryFilter === 'all') {
-                labels.push('Pemasukan Periode ini');
-                dataValues.push(computed.periodIncome);
-                bgColors.push('#10b981');
-
-                labels.push('Pengeluaran Periode ini');
-                dataValues.push(computed.periodExpense);
-                bgColors.push('#f43f5e');
-            } else if (activeCategoryFilter === 'mortgage') {
-                labels.push('KPR Terbayar');
-                dataValues.push(computed.totalPaidMortgage);
-                bgColors.push('#10b981');
-
-                labels.push('Sisa Hutang KPR');
-                dataValues.push(computed.remainingMortgage);
-                bgColors.push('#f43f5e');
+                renderTargetUI(totalGrams * goldPriceData.buyPrice);
             } else {
-                const colors = ['#4f46e5', '#f97316', '#10b981', '#06b6d4', '#ec4899', '#8b5cf6', '#eab308'];
-                let colorIdx = 0;
+                const netBalance = totalIncome - totalExpense;
+                document.getElementById('total-balance').innerText = formatRp(netBalance);
+                document.getElementById('total-income').innerText = formatRp(totalIncome);
+                document.getElementById('total-expense').innerText = formatRp(totalExpense);
 
-                const targetGoals = goals.filter(g => g.category === activeCategoryFilter);
-                targetGoals.forEach(g => {
-                    const bal = computed.goalBalances[g.id] || 0;
-                    if (bal > 0) {
-                        labels.push(g.name);
-                        dataValues.push(bal);
-                        bgColors.push(colors[colorIdx % colors.length]);
-                        colorIdx++;
-                    }
-                });
-
-                const genSavings = activeCategoryFilter === 'kid' ? computed.generalKidSavings : computed.generalPersonalSavings;
-                if (genSavings > 0) {
-                    labels.push('Tabungan Umum');
-                    dataValues.push(genSavings);
-                    bgColors.push('#64748b');
+                if (activePocketId === 'house') {
+                    renderHouseWidget(totalIncome);
+                } else {
+                    renderTargetUI(netBalance);
                 }
             }
-
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            if (dataValues.length === 0 || dataValues.every(v => v === 0)) {
-                labels.push('Belum Ada Transaksi Periode Ini');
-                dataValues.push(1);
-                bgColors.push('#e2e8f0');
-            }
-
-            chartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: dataValues,
-                        backgroundColor: bgColors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: { size: 10, family: 'Inter' },
-                                boxWidth: 12
-                            }
-                        }
-                    },
-                    cutout: '65%'
-                }
-            });
         }
 
-        // Handle Add Transaction Submit
-        function handleAddTransaction(e) {
-            e.preventDefault();
-            const category = document.querySelector('input[name="txAccountCategory"]:checked').value;
-            const type = document.querySelector('input[name="txType"]:checked').value;
-            const amount = parseFloat(document.getElementById('txAmount').value);
-            const goalId = category === 'mortgage' ? '' : document.getElementById('txGoalId').value;
-            const note = document.getElementById('txNote').value;
-            const date = document.getElementById('txDate').value;
+        // Render House Installment Widget
+        function renderHouseWidget(totalPaid) {
+            const hp = houseMeta.price || 500000000; 
+            const remaining = Math.max(0, hp - totalPaid);
+            const progress = hp > 0 ? Math.min(100, Math.round((totalPaid / hp) * 100)) : 0;
 
-            if (!amount || amount <= 0) {
-                showToast('Nominal harus lebih besar dari 0!', 'error');
-                return;
+            document.getElementById('house-total-price').innerText = formatRp(hp);
+            document.getElementById('house-remaining-price').innerText = formatRp(remaining);
+            document.getElementById('house-progress-percent').innerText = `${progress}%`;
+            document.getElementById('house-progress-bar').style.width = `${progress}%`;
+        }
+
+        // Render Target Progress Bar
+        function renderTargetUI(currentVal) {
+            const targetObj = targets[activePocketId] || { title: '', amount: 0 };
+            const titleEl = document.getElementById('target-title-display');
+            const percentEl = document.getElementById('target-progress-text');
+            const barEl = document.getElementById('target-progress-bar');
+
+            if (!targetObj.amount || targetObj.amount <= 0) {
+                titleEl.innerText = "Belum Ada Target";
+                percentEl.innerText = "0%";
+                barEl.style.width = "0%";
+            } else {
+                const pct = Math.min(100, Math.round((currentVal / targetObj.amount) * 100));
+                titleEl.innerText = targetObj.title || "Target Impian";
+                percentEl.innerText = `${pct}% (${formatRp(currentVal)} / ${formatRp(targetObj.amount)})`;
+                barEl.style.width = `${pct}%`;
             }
+        }
 
-            // Validation for withdrawal
-            if (type === 'withdraw' && category !== 'mortgage') {
-                const computed = computeData();
-                if (goalId) {
-                    const currentGoalBal = computed.goalBalances[goalId] || 0;
-                    if (amount > currentGoalBal) {
-                        showToast(`Penarikan melebihi saldo target ini (${formatRP(currentGoalBal)})`, 'error');
-                        return;
-                    }
-                } else {
-                    const totalCatBal = category === 'kid' ? computed.totalKidBalance : computed.totalPersonalBalance;
-                    if (amount > totalCatBal) {
-                        showToast(`Penarikan melebihi saldo akun ${category === 'kid' ? 'Anak' : 'Pribadi'}!`, 'error');
-                        return;
-                    }
-                }
-            }
-
-            const newTx = {
-                id: 'tx_' + Date.now(),
-                category,
-                type,
-                amount,
-                goalId,
-                note,
-                date
+        // Fetch Live Gold Price
+        window.fetchLatestGoldPrice = async function() {
+            goldPriceData = {
+                buyPrice: 2541000,
+                buybackPrice: 2311000,
+                lastUpdated: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
             };
 
-            transactions.push(newTx);
-            saveState();
+            document.getElementById('gold-price-buy').innerText = formatRp(goldPriceData.buyPrice);
+            document.getElementById('gold-price-sell').innerText = formatRp(goldPriceData.buybackPrice);
+            document.getElementById('gold-updated-time').innerText = goldPriceData.lastUpdated;
 
-            document.getElementById('txAmount').value = '';
-            document.getElementById('txNote').value = '';
+            renderDashboard();
+        };
 
-            showToast(`Transaksi ${category === 'mortgage' ? 'Cicilan Rumah' : (category === 'kid' ? 'Tabungan Anak' : 'Pribadi')} berhasil disimpan!`, 'success');
-        }
+        // Actions: Add Transaction
+        window.openAddModal = function() {
+            const amountStr = prompt(activePocketId === 'gold' ? "Masukkan Gram Emas (Contoh: 5):" : "Masukkan Jumlah (Rp):");
+            if (!amountStr) return;
+            const note = prompt("Catatan / Keterangan (Contoh: Setoran Bulanan):") || "Setoran";
 
-        // Delete Transaction
-        function deleteTransaction(id) {
-            transactions = transactions.filter(t => t.id !== id);
-            saveState();
-            showToast('Transaksi telah dihapus.', 'info');
-        }
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) return alert("Jumlah tidak valid!");
 
-        // Goal Modal Operations
-        function openGoalModal(goalId = null) {
-            const modal = document.getElementById('goalModal');
-            const content = document.getElementById('goalModalContent');
-            
-            document.getElementById('goalForm').reset();
-            document.getElementById('goalId').value = '';
-            document.getElementById('modalGoalTitle').innerText = 'Tambah Target Tabungan';
+            const newTx = {
+                pocketId: activePocketId,
+                type: 'income',
+                amount: amount,
+                note: note,
+                date: new Date().toISOString(),
+                createdAt: new Date().getTime()
+            };
 
-            if (goalId) {
-                const goal = goals.find(g => g.id === goalId);
-                if (goal) {
-                    document.getElementById('goalId').value = goal.id;
-                    document.getElementById('goalCategory').value = goal.category;
-                    document.getElementById('goalName').value = goal.name;
-                    document.getElementById('goalTarget').value = goal.target;
-                    document.getElementById('modalGoalTitle').innerText = 'Edit Target Tabungan';
-                    
-                    const radio = document.querySelector(`input[name="goalIcon"][value="${goal.icon}"]`);
-                    if (radio) radio.checked = true;
-                }
-            } else if (activeCategoryFilter !== 'all') {
-                document.getElementById('goalCategory').value = activeCategoryFilter;
+            try {
+                addDoc(collection(db, "rooms", currentRoomCode, "transactions"), newTx);
+            } catch (e) {
+                transactions.unshift({ id: Date.now().toString(), ...newTx });
+                saveLocalDemoData();
             }
+        };
 
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                content.classList.remove('scale-95');
-                content.classList.add('scale-100');
-            }, 10);
-        }
-
-        function closeGoalModal() {
-            const modal = document.getElementById('goalModal');
-            const content = document.getElementById('goalModalContent');
-
-            modal.classList.add('opacity-0');
-            content.classList.remove('scale-100');
-            content.classList.add('scale-95');
-
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 200);
-        }
-
-        // Save Goal Submit
-        function handleSaveGoal(e) {
-            e.preventDefault();
-            const id = document.getElementById('goalId').value;
-            const category = document.getElementById('goalCategory').value;
-            const name = document.getElementById('goalName').value;
-            const target = parseFloat(document.getElementById('goalTarget').value);
-            const icon = document.querySelector('input[name="goalIcon"]:checked').value;
-
-            if (id) {
-                const index = goals.findIndex(g => g.id === id);
-                if (index !== -1) {
-                    goals[index] = { ...goals[index], category, name, target, icon };
-                }
-                showToast('Target berhasil diperbarui!', 'success');
-            } else {
-                const newGoal = {
-                    id: 'g_' + Date.now(),
-                    category,
-                    name,
-                    target,
-                    icon
-                };
-                goals.push(newGoal);
-                showToast('Target baru berhasil ditambahkan!', 'success');
+        // Actions: Delete Transaction
+        window.deleteTx = function(id) {
+            if (!confirm("Hapus catatan transaksi ini?")) return;
+            try {
+                deleteDoc(doc(db, "rooms", currentRoomCode, "transactions", id));
+            } catch (e) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveLocalDemoData();
             }
+        };
 
-            saveState();
-            closeGoalModal();
-        }
-
-        // Delete Goal
-        function deleteGoal(id) {
-            const linkedTxs = transactions.filter(t => t.goalId === id);
-            if (linkedTxs.length > 0) {
-                const proceed = confirm(`Menghapus target ini akan memindahkan ${linkedTxs.length} transaksi ke "Tabungan Umum". Lanjutkan?`);
-                if (!proceed) return;
-                
-                transactions.forEach(t => {
-                    if (t.goalId === id) t.goalId = '';
-                });
+        // Actions: Change Room Sync Code
+        window.openSyncModal = function() {
+            const newCode = prompt("Masukkan Kode Room Sync (Harus sama di HP ke-2):", currentRoomCode);
+            if (newCode && newCode.trim() !== '') {
+                initRoomListener(newCode.trim().toUpperCase());
             }
+        };
 
-            goals = goals.filter(g => g.id !== id);
-            saveState();
-            showToast('Target berhasil dihapus.', 'info');
-        }
-
-        // Reset Data
-        function confirmResetData() {
-            const confirmAction = confirm('Apakah Anda yakin ingin mereset seluruh data tabungan dan KPR?');
-            if (confirmAction) {
-                localStorage.removeItem('TabunganKu_family_goals');
-                localStorage.removeItem('TabunganKu_family_transactions');
-                localStorage.removeItem('TabunganKu_family_mortgage');
-                goals = [];
-                transactions = [];
-                mortgageConfig = defaultMortgage;
-                saveState();
-                showToast('Seluruh data berhasil di-reset.', 'info');
+        // Actions: Set House Total Price
+        window.openSetHousePriceModal = function() {
+            const val = prompt("Masukkan Total Harga Rumah (Rp):", houseMeta.price || 500000000);
+            if (val) {
+                houseMeta.price = parseFloat(val) || 0;
+                renderDashboard();
             }
+        };
+
+        // Actions: Set Target Goal
+        window.openSetTargetModal = function() {
+            const title = prompt("Nama Target (misal: Beli Laptop / Tabungan Umroh):", targets[activePocketId]?.title || "");
+            const amount = prompt("Nominal Target (Rp):", targets[activePocketId]?.amount || "");
+            if (amount) {
+                targets[activePocketId] = { title, amount: parseFloat(amount) || 0 };
+                renderDashboard();
+            }
+        };
+
+        // Utility: HTML Escaper
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        // Export Data JSON
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ goals, transactions, mortgageConfig }, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `TabunganKu_family_kpr_backup_${new Date().toISOString().split('T')[0]}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-            showToast('Data berhasil diekspor!', 'success');
-        }
-
-        // UI Toast Notification
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            
-            let bgColors = 'bg-slate-800 text-white';
-            if (type === 'success') bgColors = 'bg-emerald-600 text-white';
-            if (type === 'error') bgColors = 'bg-rose-600 text-white';
-
-            toast.className = `px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium ${bgColors} transition transform duration-300 translate-y-2 opacity-0 flex items-center gap-2`;
-            toast.innerHTML = `<span>${message}</span>`;
-
-            container.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // Helper string escape HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-       // Otomatis tarik data cloud setiap kali HP 2 dibuka / layar di-un-lock
-document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') {
-        syncDataFromCloud();
-    }
-});
+        // Initial Load
+        renderPocketTabs();
+        initRoomListener(currentRoomCode);
     </script>
 </body>
 </html>
