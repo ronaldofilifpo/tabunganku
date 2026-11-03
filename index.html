@@ -18,7 +18,7 @@
             <h1 class="font-bold text-lg text-white flex items-center gap-2">
                 <i class="fa-solid fa-wallet text-blue-500"></i> TabunganKita
             </h1>
-            <p class="text-xs text-emerald-400 font-medium">● Real-time Sync Aktif</p>
+            <p class="text-xs text-emerald-400 font-medium" id="sync-status">● Real-time Sync Aktif</p>
         </div>
         <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
             <span class="text-slate-400">Room:</span> <span id="room-badge" class="font-bold text-blue-400">...</span>
@@ -35,59 +35,32 @@
 
         <!-- Total Saldo Utama -->
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 rounded-2xl shadow-lg">
-            <p class="text-blue-100 text-xs">Total Saldo Utama (Tabungan + Emas)</p>
-            <h2 id="total-saldo" class="text-3xl font-extrabold mt-1">Rp 0</h2>
+            <p class="text-blue-100 text-xs">Total Saldo Utama</p>
+            <h2 id="totalBalance" class="text-3xl font-extrabold mt-1">Rp 0</h2>
+            <p id="txCount" class="text-[10px] text-blue-200 mt-2">0 item</p>
         </div>
 
-        <!-- Ringkasan Pos -->
-        <div class="grid grid-cols-2 gap-2">
-            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                <span class="text-[10px] text-slate-400">Tabungan Utama</span>
-                <p id="saldo-utama" class="text-sm font-bold text-emerald-400 mt-0.5">Rp 0</p>
-            </div>
-            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                <span class="text-[10px] text-slate-400">Tabungan Anak</span>
-                <p id="saldo-anak" class="text-sm font-bold text-blue-400 mt-0.5">Rp 0</p>
-            </div>
-            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                <span class="text-[10px] text-slate-400">Cicilan Rumah</span>
-                <p id="saldo-rumah" class="text-sm font-bold text-amber-400 mt-0.5">Rp 0</p>
-            </div>
-            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                <span class="text-[10px] text-slate-400">Emas Antam (Gram)</span>
-                <p id="saldo-emas" class="text-sm font-bold text-yellow-400 mt-0.5">0 Gram</p>
-            </div>
-        </div>
-
-        <!-- Form Input Langsung (Tanpa Modal / Pasti Muncul) -->
+        <!-- Form Input Transaksi -->
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
             <h3 class="text-sm font-semibold text-white flex items-center gap-2">
                 <i class="fa-solid fa-plus-circle text-blue-500"></i> Tambah Transaksi Baru
             </h3>
-            <form id="tx-form" onsubmit="addTransaction(event)" class="space-y-3">
+            <form id="tx-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
                 <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Pilih Pos Dompet</label>
-                    <select id="f-wallet" onchange="checkWallet()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                        <option value="utama">Tabungan Utama</option>
-                        <option value="anak">Tabungan Anak</option>
-                        <option value="rumah">Cicilan Rumah</option>
-                        <option value="emas">Tabungan Emas Antam</option>
+                    <label class="block text-[11px] text-slate-400 mb-1">Kategori / Pos Dompet</label>
+                    <select id="txCategory" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                        <option value="Tabungan">Tabungan Utama</option>
+                        <option value="Pemasukan">Pemasukan Lainnya</option>
+                        <option value="Pengeluaran">Pengeluaran</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Jenis</label>
-                    <select id="f-type" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                        <option value="masuk">Pemasukan / Setoran (+)</option>
-                        <option value="keluar">Pengeluaran / Penarikan (-)</option>
-                    </select>
+                    <label class="block text-[11px] text-slate-400 mb-1">Nominal (Rp)</label>
+                    <input type="number" id="txAmount" placeholder="Contoh: 500000" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" required>
                 </div>
                 <div>
-                    <label id="label-amount" class="block text-[11px] text-slate-400 mb-1">Nominal (Rp)</label>
-                    <input type="number" id="f-amount" placeholder="Contoh: 500000" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" required>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Keterangan</label>
-                    <input type="text" id="f-desc" placeholder="Contoh: Setoran awal / Beli emas" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" required>
+                    <label class="block text-[11px] text-slate-400 mb-1">Catatan / Keterangan</label>
+                    <input type="text" id="txNote" placeholder="Contoh: Setoran bulanan" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl text-xs transition shadow-lg">Simpan Transaksi</button>
             </form>
@@ -96,13 +69,14 @@
         <!-- Riwayat -->
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
             <h3 class="text-sm font-semibold text-white">Riwayat Transaksi</h3>
-            <div id="tx-list" class="space-y-2 max-h-60 overflow-y-auto">
-                <p class="text-slate-500 text-xs text-center py-4">Belum ada transaksi.</p>
+            <div id="transactionList" class="divide-y divide-slate-800 max-h-60 overflow-y-auto space-y-2">
+                <p class="text-slate-500 text-xs text-center py-4">Belum ada data transaksi di room ini.</p>
             </div>
         </div>
 
     </main>
 
+    <!-- Script Utama (Firebase + LocalStorage + Sync) -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBw-DemoKeyForTabunganAppSyncRealtime2026",
@@ -113,25 +87,83 @@
         const db = firebase.firestore();
         firebase.auth().signInAnonymously();
 
-        let currentRoom = localStorage.getItem('my_room') || 'KELUARGA123';
-        let globalData = { transactions: [], housePrice: 500000000 };
+        let currentRoom = localStorage.getItem('tabungku_room') || 'KELUARGA123';
+        let transactions = [];
         let unsub = null;
-        const goldPrice = 2541000;
 
         document.getElementById('input-room').value = currentRoom;
         document.getElementById('room-badge').innerText = currentRoom;
-        connectRoom(currentRoom);
+        initRealtimeSync(currentRoom);
 
-        function connectRoom(room) {
+        function getRoomId() {
+            return currentRoom;
+        }
+
+        // Inisialisasi Tampilan Aplikasi & Simpan ke Memori Lokal HP
+        function initApp() {
+            const listEl = document.getElementById('transactionList');
+            const balanceEl = document.getElementById('totalBalance');
+            const countEl = document.getElementById('txCount');
+            
+            listEl.innerHTML = '';
+            let total = 0;
+            
+            // Simpan ke localStorage agar tidak hilang saat refresh
+            localStorage.setItem('tabungku_transactions', JSON.stringify(transactions));
+
+            if (!Array.isArray(transactions) || transactions.length === 0) {
+                listEl.innerHTML = `<p class="text-center text-slate-400 py-4 text-sm">Belum ada data transaksi di room ini.</p>`;
+                balanceEl.innerText = 'Rp 0';
+                countEl.innerText = '0 item';
+                return;
+            }
+
+            countEl.innerText = `${transactions.length} item`;
+
+            transactions.forEach(tx => {
+                let amountNum = Number(tx.amount) || 0;
+                if (tx.category === 'Pemasukan' || tx.category === 'Tabungan') {
+                    total += amountNum;
+                } else {
+                    total -= amountNum;
+                }
+
+                let itemHTML = `
+                    <div class="py-2.5 flex justify-between items-center text-sm">
+                        <div>
+                            <p class="font-semibold text-white">${tx.note || tx.category || 'Transaksi'}</p>
+                            <p class="text-xs text-slate-400">${new Date(tx.date).toLocaleDateString('id-ID')} • <span class="text-blue-400 font-medium">${tx.category}</span></p>
+                        </div>
+                        <span class="font-bold ${tx.category === 'Pengeluaran' ? 'text-red-400' : 'text-emerald-400'}">
+                            ${tx.category === 'Pengeluaran' ? '-' : '+'} Rp ${amountNum.toLocaleString('id-ID')}
+                        </span>
+                    </div>
+                `;
+                listEl.innerHTML += itemHTML;
+            });
+
+            balanceEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
+        }
+
+        // Sinkronisasi Real-time dengan Firebase Firestore
+        function initRealtimeSync(room) {
             if (unsub) unsub();
             unsub = db.collection('rooms').doc(room).onSnapshot(doc => {
                 if (doc.exists) {
-                    globalData = doc.data();
+                    let data = doc.data();
+                    transactions = data.transactions || [];
                 } else {
-                    db.collection('rooms').doc(room).set({ transactions: [], housePrice: 500000000 });
-                    globalData = { transactions: [], housePrice: 500000000 };
+                    db.collection('rooms').doc(room).set({ transactions: [] });
+                    transactions = [];
                 }
-                render();
+                initApp();
+            }, err => {
+                console.error('Error sync:', err);
+                let localData = localStorage.getItem('tabungku_transactions');
+                if (localData) {
+                    transactions = JSON.parse(localData);
+                    initApp();
+                }
             });
         }
 
@@ -139,101 +171,47 @@
             let val = document.getElementById('input-room').value.trim().toUpperCase();
             if (!val) return alert('Masukkan kode room!');
             currentRoom = val;
-            localStorage.setItem('my_room', currentRoom);
+            localStorage.setItem('tabungku_room', currentRoom);
             document.getElementById('room-badge').innerText = currentRoom;
-            connectRoom(currentRoom);
+            initRealtimeSync(currentRoom);
         }
 
-        function checkWallet() {
-            let w = document.getElementById('f-wallet').value;
-            let lbl = document.getElementById('label-amount');
-            let inp = document.getElementById('f-amount');
-            if (w === 'emas') {
-                lbl.innerText = "Jumlah Gram Emas (gr)";
-                inp.placeholder = "Contoh: 10";
-            } else {
-                lbl.innerText = "Nominal (Rp)";
-                inp.placeholder = "Contoh: 500000";
-            }
-        }
-
-        function addTransaction(e) {
+        // Handle Form Submit (Simpan lokal & kirim ke Cloud/Firebase)
+        function handleFormSubmit(e) {
             e.preventDefault();
-            let wallet = document.getElementById('f-wallet').value;
-            let type = document.getElementById('f-type').value;
-            let rawAmt = Number(document.getElementById('f-amount').value);
-            let desc = document.getElementById('f-desc').value;
+            const amount = document.getElementById('txAmount').value;
+            const category = document.getElementById('txCategory').value;
+            const note = document.getElementById('txNote').value;
 
-            let newTx = {
-                wallet,
-                type,
-                desc,
-                amount: wallet === 'emas' ? rawAmt * goldPrice : rawAmt,
-                grams: wallet === 'emas' ? rawAmt : 0,
-                date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            const newTx = {
+                id: 'tx_' + new Date().getTime(),
+                date: new Date().toISOString(),
+                amount: Number(amount),
+                category: category,
+                note: note || category
             };
 
-            globalData.transactions.unshift(newTx);
-            db.collection('rooms').doc(currentRoom).set(globalData).then(() => {
+            transactions.push(newTx);
+            localStorage.setItem('tabungku_transactions', JSON.stringify(transactions));
+            
+            initApp();
+
+            // Kirim ke Firebase Cloud agar HP ke-2 ikut berubah
+            db.collection('rooms').doc(currentRoom).set({
+                transactions: transactions
+            }).then(() => {
                 document.getElementById('tx-form').reset();
-                checkWallet();
-            }).catch(err => alert('Gagal menyimpan: ' + err.message));
+            }).catch(err => alert('Gagal kirim ke cloud: ' + err.message));
         }
 
-        function deleteTx(idx) {
-            if (confirm('Hapus transaksi ini?')) {
-                globalData.transactions.splice(idx, 1);
-                db.collection('rooms').doc(currentRoom).set(globalData);
+        // Saat halaman dimuat pertama kali
+        document.addEventListener('DOMContentLoaded', () => {
+            let localData = localStorage.getItem('tabungku_transactions');
+            if (localData) {
+                transactions = JSON.parse(localData);
+                initApp();
             }
-        }
-
-        function render() {
-            let sUtama = 0, sAnak = 0, sRumah = 0, sEmas = 0;
-
-            globalData.transactions.forEach(tx => {
-                let amt = Number(tx.amount);
-                if (tx.wallet === 'utama') {
-                    if (tx.type === 'masuk') sUtama += amt; else sUtama -= amt;
-                } else if (tx.wallet === 'anak') {
-                    if (tx.type === 'masuk') sAnak += amt; else sAnak -= amt;
-                } else if (tx.wallet === 'rumah') {
-                    if (tx.type === 'masuk') sRumah += amt; else sRumah -= amt;
-                } else if (tx.wallet === 'emas') {
-                    if (tx.type === 'masuk') sEmas += Number(tx.grams || 0); else sEmas -= Number(tx.grams || 0);
-                }
-            });
-
-            let nilaiEmasRupiah = sEmas * goldPrice;
-            document.getElementById('total-saldo').innerText = formatRp(sUtama + nilaiEmasRupiah);
-            document.getElementById('saldo-utama').innerText = formatRp(sUtama);
-            document.getElementById('saldo-anak').innerText = formatRp(sAnak);
-            document.getElementById('saldo-rumah').innerText = formatRp(sRumah);
-            document.getElementById('saldo-emas').innerText = sEmas + " Gram (" + formatRp(nilaiEmasRupiah) + ")";
-
-            let listEl = document.getElementById('tx-list');
-            if (globalData.transactions.length === 0) {
-                listEl.innerHTML = `<p class="text-slate-500 text-xs text-center py-4">Belum ada transaksi.</p>`;
-            } else {
-                listEl.innerHTML = globalData.transactions.map((tx, i) => `
-                    <div class="flex justify-between items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-xs">
-                        <div>
-                            <p class="font-medium text-white">${tx.desc}</p>
-                            <p class="text-[10px] text-slate-400 uppercase">${tx.wallet} • ${tx.date}</p>
-                        </div>
-                        <div class="flex items-center gap-3 text-right">
-                            <span class="font-bold ${tx.type === 'masuk' ? 'text-emerald-400' : 'text-rose-400'}">
-                                ${tx.type === 'masuk' ? '+' : '-'} ${tx.wallet === 'emas' ? tx.grams + ' gr' : formatRp(tx.amount)}
-                            </span>
-                            <button onclick="deleteTx(${i})" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function formatRp(n) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-        }
+        });
     </script>
 </body>
 </html>
